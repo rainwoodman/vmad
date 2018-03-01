@@ -50,7 +50,7 @@ class as_complex_field:
         _x = numpy.stack([_y.real, _y.imag], axis=-1)
         return dict(_x=_x)
 
-    def jvp(self, x_):
+    def jvp(self, x_, pm):
         y_ = pm.create(mode='complex')
         y_.real[...] = x_[..., 0]
         y_.imag[...] = x_[..., 1]

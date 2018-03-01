@@ -27,3 +27,12 @@ class Tape(list):
         # to avoid cicurlar reference; this is not a strong dependency
         from .autodiff import jvpmodel
         return jvpmodel(self)
+
+    def compute_jvjp(self, vout, aout, init):
+        jvp = self.get_jvp()
+        aout_ = [a + '_' for a in aout]
+        t = jvp.compute(aout_, init)
+        vjp = self.get_vjp()
+        p = vjp.compute(vout, init=dict([('_' + a, t1) for a, t1 in zip(aout, t)]))
+        return p
+

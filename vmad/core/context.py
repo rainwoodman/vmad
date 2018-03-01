@@ -52,7 +52,7 @@ class Context(dict):
 
         for varname in vout:
             if varname not in _voutnames:
-                raise UnexpectedOutput("Requested vout %s is not defined by the model as an output" % varname)
+                raise UnexpectedOutput("Requested vout %s is not defined by the model as an output; available ones are %s" % (varname, _voutnames))
 
         r = {}
         for i, node in enumerate(model):
