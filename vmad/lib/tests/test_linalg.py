@@ -46,7 +46,7 @@ class Test_reshape(BaseScalarTest):
         c = linalg.reshape(x, (5, 2))
         return c
 
-class Test_mul(BaseScalarTest):
+class Test_mul1(BaseScalarTest):
     to_scalar = linalg.to_scalar
     x = numpy.arange(10)
     y = sum(x ** 2)
@@ -54,6 +54,26 @@ class Test_mul(BaseScalarTest):
 
     def model(self, x):
         return linalg.mul(x, 1.0)
+
+class Test_mul2(BaseScalarTest):
+    to_scalar = linalg.to_scalar
+    x = numpy.arange(10) + 1
+    y = sum(x**2)
+    x_ = numpy.eye(10)
+    eps = 1e-3
+    def model(self, x):
+        y1 = linalg.pow(x, 0.3)
+        y2 = linalg.pow(x, 0.7)
+        return linalg.mul(y1, y2)
+
+class Test_mul3(BaseScalarTest):
+    to_scalar = linalg.to_scalar
+    x = numpy.arange(10) 
+    y = sum(x**2)
+    x_ = numpy.eye(10)
+
+    def model(self, x):
+        return linalg.mul(1, x)
 
 class Test_sum(BaseScalarTest):
     to_scalar = linalg.to_scalar

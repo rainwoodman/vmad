@@ -97,6 +97,17 @@ class Primitive(object):
         # append self to the model.
         model.append(self)
 
+    def find_model(self):
+        """ Infer the model from args fail if nothing is found """
+
+        # we do not save model directly to avoid circular references.
+
+        for k, var in self.varin.items():
+            return var.symbol.model
+
+        for k, var in self.varout.items():
+            return var.symbol.model
+
     def __iter__(self):
         """ for unpacking the varout during model construction, e.g.
 

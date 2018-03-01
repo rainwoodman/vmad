@@ -1,5 +1,5 @@
 from vmad import operator
-
+from vmad.core.symbol import Literal, ZeroLiteral
 import numpy
 
 @operator
@@ -11,6 +11,15 @@ class mul:
 
     def apl(self, x1, x2):
         return dict(y = x1 * x2)
+
+    def rcd(self, x1, x2):
+        model = self.find_model()
+        # the other value is not needed, 0 should work.
+        if isinstance(self.varin['x1'].symbol, Literal):
+            x2 = 0
+        if isinstance(self.varin['x2'].symbol, Literal):
+            x1 = 0
+        return dict(x1=x1, x2=x2)
 
     def vjp(self, _y, x1, x2):
         return dict(_x1 = _y * x2,
