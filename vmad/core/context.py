@@ -91,7 +91,7 @@ class Context(dict):
 
         r = node.call(**kwargs)
 
-        tape.append(node, node.record(kwargs))
+        tape.append(node, node.record(kwargs, r))
 
         for argname, var in node.varout.items():
             var.store(self, r[argname])

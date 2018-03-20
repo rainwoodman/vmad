@@ -146,7 +146,7 @@ class Primitive(object):
 
         return r
 
-    def record(self, kwargs):
+    def record(self, kwargs, r):
         """ generate the kwargs that goes into the tape;
             default is to record the entire kwargs.
 
@@ -158,8 +158,10 @@ class Primitive(object):
             invoked by the Context.
 
             kwargs: the arguments that goes into the impl function
+            r : the result of the calculation operator apl, dict from argname to value
+                see above.
 
-            Returns: dict that goes into the tape
+            Returns: dict that goes into the tape, will be available in vjp and jpv
         """
         return type(self).record_impl(self, **kwargs)
 
