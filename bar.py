@@ -28,24 +28,6 @@ class nl3d:
         return dict(rho = rho)
 
 @autooperator
-class objective:
-    ain = [('x', '*')]
-    aout = [('y', '*'), ('chi2', '*'), ('prior', '*')]
-    def main(self, x, d, powerspectrum, pm):
-        rho = nl3d(x, q, [0.1, 0.6, 1.0], Planck15, powerspectrum, pm)
-        r = linalg.add(rho, d * -1)
-
-        chi2 = linalg.sum(linalg.mul(r, r))
-        chi2 = mpi.allreduce(chi2, pm.comm)
-
-        prior = linalg.sum(linalg.mul(x, x))
-        prior = mpi.allreduce(prior, pm.comm)
-
-        y = linalg.add(chi2, prior)
-
-        return dict(y = y, prior=prior, chi2=chi2)
-
-@autooperator
 class F:
     ain = [('x', '*')]
     aout = [('y', '*')]
@@ -61,6 +43,25 @@ class P:
     aout = [('y', '*')]
     def main(self, x, d, powerspectrum, pm):
         return dict(y = x)
+
+@autooperator
+class objective:
+    ain = [('x', '*')]
+    aout = [('y', '*'), ('chi2', '*'), ('prior', '*')]
+    def main(self, x, d, powerspectrum, pm):
+        r = F(x, d, powerspectrum, pm)
+
+        chi2 = linalg.sum(linalg.mul(r, r))
+        chi2 = mpi.allreduce(chi2, pm.comm)
+
+        p = P(x, d, powerspectrum, pm)
+        prior = linalg.sum(linalg.mul(p, p))
+        prior = mpi.allreduce(prior, pm.comm)
+
+        y = linalg.add(chi2, prior)
+
+        return dict(y = y, prior=prior, chi2=chi2)
+
 
 wn = pm.generate_whitenoise(555, unitary=True)
 x = wn[...]
@@ -89,5 +90,5 @@ def hessian_dot(Fmodel, Pmodel, x, v):
 
     return jvjp1 + jvjp2
 
-print(f, p)
+#print(f, p)
 print(hessian_dot(Fmodel, Pmodel, x, x))
