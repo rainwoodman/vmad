@@ -55,28 +55,6 @@ def autooperator(kls):
             m.output(**r)
         return m
 
-    def compute(self, m, return_tape, **kwargs):
-        vout = [var.name for var in m._vout]
-        vin  = [var.name for var in m._vin]
-
-        init = {}
-        for varname in vin:
-            init[varname] = kwargs[varname]
-
-        ctx = Context(**init)
-        if return_tape:
-            r1, tape = ctx.compute(m, vout=vout, return_tape=True)
-        else:
-            r1 = ctx.compute(m, vout=vout, return_tape=False)
-
-        r = {}
-        for varname, value in zip(vout, r1):
-            r[varname] = value
-
-        if return_tape:
-            r = r, tape
-        return r
-
     def apl(self, **kwargs):
         m = _build(kwargs)
         init = [(a, kwargs[a]) for a in self.ain.keys()]
