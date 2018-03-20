@@ -1,6 +1,5 @@
 from .operator import terminal
 from .error import UnexpectedOutput, ExecutionError, ModelError
-from .tape import Tape
 
 class Context(dict):
     """ A context is a collection of python objects referred by symbol names;
@@ -9,8 +8,8 @@ class Context(dict):
 
         Context is the internal API. Use the compute method of a model instead.
     """
-    def __init__(self, **kwargs):
-        self.update(kwargs)
+    def __init__(self, **init):
+        self.update(init)
 
     def remove_unused(self, nodes):
         """ remove objects not used by nodes"""
@@ -36,17 +35,10 @@ class Context(dict):
             if var.has_reference(): return True
         return False
 
-    def compute(self, model, vout, return_tape=False, monitor=None):
+    def compute(self, model, vout, tape, monitor=None):
         """
             compute a model in the current context (self)
         """
-        tape = Tape(model)
-
-        if isinstance(vout, str):
-            single_return = True
-            vout = [vout]
-        else:
-            single_return = False
 
         _voutnames = set([var.name for var in model._vout])
 
@@ -58,12 +50,12 @@ class Context(dict):
         for i, node in enumerate(model):
 
             if self.result_used(node):
-                try:
+                #try:
                     self.execute(node, tape)
-                except ModelError:
-                    raise
-                except Exception as e:
-                    raise ExecutionError("Error computing node : %s. model = %s" % (node, model), e)
+                #except ModelError:
+                #    raise
+                #except Exception as e:
+                #    raise ExecutionError("Error computing node : %s. model = %s" % (node, model), e)
 
             if isinstance(node, terminal._apl):
                 for argname, var in node.varout.items():
@@ -75,12 +67,6 @@ class Context(dict):
                 monitor(node, self)
 
         r = [r[varname] for varname in vout]
-
-        if single_return:
-            r = r[0]
-
-        if return_tape:
-            r = r, tape
 
         return r
 

@@ -79,24 +79,27 @@ def autooperator(kls):
 
     def apl(self, **kwargs):
         m = _build(kwargs)
-        y = compute(self, m, False, **kwargs)
+        init = [(a, kwargs[a]) for a in self.ain.keys()]
+        vout = list(self.aout.keys())
+        y = m.compute(vout, init=init, return_dict=True)
         return y
 
     def vjp(self, **kwargs):
         m = _build(kwargs)
-        y, tape = compute(self, m, True, **kwargs)
 
-        m = tape.get_vjp()
-        y = compute(self, m, False, **kwargs)
-        return y
+        init = [(a.name, kwargs[a.name]) for a in m._vin]
+        vout = [var.name for var in m._vout]
+        v =    [(a, kwargs[a]) for a in self.ain.keys() if a.startswith('_')]
+        y, vjp = m.compute_with_vjp(init=init, v=v, return_dict=True)
+        return vjp
 
     def jvp(self, **kwargs):
         m = _build(kwargs)
-        y, tape = compute(self, m, True, **kwargs)
-
-        m = tape.get_jvp()
-        y = compute(self, m, False, **kwargs)
-        return y
+        init = [(a.name, kwargs[a.name]) for a in m._vin]
+        vout = [var.name for var in m._vout]
+        v =    [(a, kwargs[a]) for a in self.ain.keys() if a .endswith('_')]
+        y, jvp = m.compute_with_jvp(vout, init=kwargs, v=v, return_dict=True)
+        return jvp
 
     kls._apl = _make_primitive(kls, 'apl', apl, argnames=argnames)
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)

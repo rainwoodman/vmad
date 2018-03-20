@@ -2,6 +2,8 @@ from .symbol import Symbol, Literal
 from .operator import terminal
 from .error import DuplicatedOutput
 from .context import Context
+from .tape import Tape
+from collections import OrderedDict
 
 class Model(list):
     def __init__(self):
@@ -47,17 +49,187 @@ class Model(list):
     def __repr__(self):
         return "Model: %s => %s" % (self._vin, self._vout)
 
-    def compute(self, vout, init, return_tape=False, monitor=None):
+    def compute(self, vout, init, return_tape=False, return_dict=False, monitor=None):
         """
             compute a model with the initial values
 
             init : dictionary
         """
+        if isinstance(vout, str):
+            single_return = True
+            vout = [vout]
+        else:
+            single_return = False
+
+        init = OrderedDict(init)
+
+        tape = Tape(self, init)
         ctx = Context(**init)
 
-        return ctx.compute(self, vout=vout,
-                        return_tape=return_tape,
+        out = ctx.compute(self, vout=vout,
+                        tape=tape,
                         monitor=monitor)
+
+        tape.finalize(OrderedDict(zip(vout, out)))
+
+        if return_dict:
+            out = OrderedDict(zip(vout, out))
+        else:
+            if single_return:
+                out = out[0]
+
+        if return_tape:
+            out = out, tape
+
+        return out
+
+    def compute_with_vjp(self, init, v, return_dict=False, monitor=None):
+        """
+            compute a model with the vjp
+
+            Parameters
+            ----------
+            init : dict, or list of tuples
+                initial values of the module. List will
+                be convert to an ordereddict
+            v    : dict, or list of tuples
+                initial vectors dotted to the jacobian. List will
+                be convert to an ordereddict
+
+            The vout of the model computation is inferred
+            from variable names of v.
+
+            The vout of the vjp computation is inferred from
+            variable names of init.
+
+            Returns
+            -------
+            out : a list of computed values of the model;
+                ordered by the keys of the dictionary.
+
+            vjpout : a list of computed values of the vjp
+                ordered by the keys of the dictionary.
+
+        """
+
+        init = OrderedDict(init)
+        v = OrderedDict(v)
+
+        # assert all of the vectors start with '_', such that
+        # we can properly infer the vout of the model
+        assert all(varname.startswith('_') for varname in v.keys())
+
+        vout = [varname[1:] for varname in v.keys()]
+        out, tape = self.compute(vout, init=init, return_tape=True)
+        vjpvout = tape.get_vjp_vout()
+
+        vjp = tape.get_vjp()
+        vjpout = vjp.compute(vjpvout, init=v)
+
+        if return_dict:
+            out = OrderedDict(zip(vout, out))
+            vjpout = OrderedDict(zip(vjpvout, vjpout))
+
+        return out, vjpout
+
+    def compute_with_jvp(self, vout, init, v, return_dict=False, monitor=None):
+        """
+            compute a model with the jvp
+
+            Parameters
+            ----------
+            vout : list or string
+                output variable to compute.
+            init : dict, or list of tuples
+                initial values of the module.
+            v    : dict, or list of tuples
+                initial vectors dotted by the jacobian.
+
+            The vout of the vjp computation is inferred from
+            variable names of vout.
+
+            Returns
+            -------
+            out : a list of computed values of the model.
+                if vout is a string, out is delisted (a single python object)
+
+            jvpout : a list of computed values of the jvp
+                ordered by the keys of the dictionary.
+                if vout is a string, out is delisted (a single python object)
+
+        """
+        init = OrderedDict(init)
+        v = OrderedDict(v)
+
+        # assert all of the vectors ends with '_'.
+        assert all(varname.endswith('_') for varname in v.keys())
+
+        out, tape = self.compute(vout, init=init, return_tape=True)
+
+        jvpvout = tape.get_jvp_vout()
+
+        jvp = tape.get_jvp()
+        jvpout = jvp.compute(jvpvout, init=v)
+
+        if return_dict:
+            out = OrderedDict(zip(vout, out))
+            jvpout = OrderedDict(zip(jvpvout, jvpout))
+        else:
+            if not isinstance(vout, (tuple, list)):
+                jvpout = jvpout[0]
+
+        return out, jvpout
+
+    def compute_with_gnDp(self, vout, init, v, return_dict=False, monitor=None):
+        """
+            compute a model with the gauss-newton approximated
+            hessian vector product (D dot v = JTJ dot v)
+
+            Parameters
+            ----------
+            vout : list or string
+                output variable to compute.
+            init : dict, or list of tuples
+                initial values of the model.
+            v    : dict, or list of tuples
+                initial vectors dotted by the jacobian; shall
+                match the variables in init, but with '_' appended.
+
+            The vout of the vjp computation is inferred from
+            variable names of vout.
+
+            Returns
+            -------
+            out : a list of computed values of the model.
+                if vout is a string, out is delisted (a single python object)
+
+            gnhpout: a list of computed values of the gnhp
+                ordered by the keys of the dictionary init.
+
+        """
+        init = OrderedDict(init)
+        v = OrderedDict(v)
+
+        # assert all of the vectors ends with '_'.
+        assert all(varname.endswith('_') for varname in v.keys())
+
+        out, tape = self.compute(vout, init=init, return_tape=True)
+
+        jvp = tape.get_jvp()
+        jvpvout = tape.get_jvp_vout()
+        jvpout = jvp.compute(jvpvout, init=v)
+
+        vjp = tape.get_vjp()
+        vjpvout = tape.get_vjp_vout()
+        # connecting the output of jvp as input of vjp
+        vjpvin = ['_' + i[:-1] for i in jvpvout]
+        gnhpout = vjp.compute(vjpvout, init=zip(vjpvin, jvpout))
+
+        if return_dict:
+            out = OrderedDict(zip(vout, out))
+            gnhpout = OrderedDict(zip(vjpvout, gnhpout))
+
+        return out, gnhpout
 
 class Builder(Model):
     """ A context manager to signify the process of buildig a model.

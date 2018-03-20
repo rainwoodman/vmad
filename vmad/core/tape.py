@@ -12,18 +12,40 @@ class Record(object):
         return '%s / %s' % (self.node, self.impl_kwargs)
 
 class Tape(list):
-    def __init__(self, model):
+    def __init__(self, model, init):
         self.model = model
+        self.init = init
+        self._completed = False
+
+    def finalize(self, out):
+        """ Finalize the tape, with a set of computed outputs.
+
+            Parameters
+            ----------
+            out : dict / OrderedDict
+        """
+        assert isinstance(out, dict)
+        self.out = out
+        self._completed = True
 
     def append(self, node, impl_kwargs):
+        assert not self._completed
         list.append(self, Record(node, impl_kwargs))
 
+    def get_vjp_vout(self):
+        return ['_' + varname for varname in self.init.keys()]
+
+    def get_jvp_vout(self):
+        return [varname + '_' for varname in self.out.keys()]
+
     def get_vjp(self):
+        assert self._completed
         # to avoid cicurlar reference; this is not a strong dependency
         from .autodiff import vjpmodel
         return vjpmodel(self)
 
     def get_jvp(self):
+        assert self._completed
         # to avoid cicurlar reference; this is not a strong dependency
         from .autodiff import jvpmodel
         return jvpmodel(self)

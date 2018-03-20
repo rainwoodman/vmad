@@ -81,8 +81,8 @@ Pmodel = P.build(d=d, powerspectrum=powerspectrum, pm=pm)
 f = Fmodel.compute('y', init=dict(x=x))
 p = Pmodel.compute('y', init=dict(x=x))
 
-def hessian_dot(Fmodel, Pmodel, x, v):
-    # gauss newton hessian inverse is
+def gn_hessian_dot(Fmodel, Pmodel, x, v):
+    # gauss newton hessian dot is
     f, Ftape = Fmodel.compute('y', init=dict(x=x), return_tape=True)
     p, Ptape = Pmodel.compute('y', init=dict(x=x), return_tape=True)
     jvjp1 = Ftape.compute_jvjp('_x', ['y'], init=dict(x_ = v))

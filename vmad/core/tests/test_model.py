@@ -94,3 +94,41 @@ def test_model_many_rewrites():
     _x = vjp.compute(init=init, vout='_x', monitor=print)
     assert _x == 4.0
 
+def test_model_compute_with_vjp():
+    with Builder() as m:
+        a = m.input('a')
+        t1 = add(x1=a, x2=a)
+        m.output(b=t1)
+
+    init = [('a', 1)]
+    [b], [_a] = m.compute_with_vjp(init=init, v=[('_b', 1.0)])
+    assert b == 2.0
+    assert _a == 2.0
+
+
+def test_model_compute_with_jvp():
+    with Builder() as m:
+        a = m.input('a')
+        t1 = add(x1=a, x2=a)
+        m.output(b=t1)
+
+    init = [('a', 1)]
+    b, b_ = m.compute_with_jvp(vout='b', init=init, v=[('a_', 1.0)])
+    assert b == 2.0
+    assert b_ == 2.0
+
+def test_model_compute_with_gnDp():
+    with Builder() as m:
+        a = m.input('a')
+        t1 = add(x1=a, x2=a)
+        m.output(b=t1)
+
+    init = [('a', 1)]
+    b, [_a_] = m.compute_with_gnDp(
+                            vout='b',
+                            init=init,
+                            v=[('a_', 1.0)],
+                            )
+    assert b == 2.0
+    assert _a_ == 4.0
+
