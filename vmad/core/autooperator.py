@@ -59,7 +59,8 @@ def autooperator(kls):
         m = _build(kwargs)
         init = [(a, kwargs[a]) for a in self.ain.keys()]
         vout = list(self.aout.keys())
-        y = m.compute(vout, init=init, return_dict=True)
+        y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
+        y['##tape'] = tape
         return y
 
     def vjp(self, **kwargs):
