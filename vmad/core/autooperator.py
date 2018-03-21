@@ -71,22 +71,23 @@ def autooperator(kls):
 
     def vjp(self, **kwargs):
         tape = kwargs['##tape']
-        m = _build(kwargs)
 
-        init = [(a.name, kwargs[a.name]) for a in m._vin]
-        vout = [var.name for var in m._vout]
         v =    [(a, kwargs[a]) for a in self.ain.keys() if a.startswith('_')]
-        y, vjp = m.compute_with_vjp(init=init, v=v, return_dict=True)
-        return vjp
+
+        vjp = tape.get_vjp()
+        vjpvout = tape.get_vjp_vout()
+        vjpout = vjp.compute(vjpvout, init=v)
+        return dict(zip(vjpvout, vjpout))
 
     def jvp(self, **kwargs):
         tape = kwargs['##tape']
-        m = _build(kwargs)
-        init = [(a.name, kwargs[a.name]) for a in m._vin]
-        vout = [var.name for var in m._vout]
+
         v =    [(a, kwargs[a]) for a in self.ain.keys() if a .endswith('_')]
-        y, jvp = m.compute_with_jvp(vout, init=kwargs, v=v, return_dict=True)
-        return jvp
+
+        jvp = tape.get_jvp()
+        jvpvout = tape.get_jvp_vout()
+        jvpout = jvp.compute(jvpvout, init=v)
+        return dict(zip(jvpvout, jvpout))
 
     kls._apl = _make_primitive(kls, 'apl', apl, argnames=argnames, record_impl=rcd)
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)
