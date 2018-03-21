@@ -295,8 +295,39 @@ def test_operator_record():
         def apl(self, x, p):
             return x * p
 
-        def rcd(self, x, p):
+        def rcd(self, x, p, y):
             return dict(x=x, u=p)
+
+        def vjp(self, x, _y, u):
+            return _y * u
+
+        def jvp(self, x, x_, u):
+            return x_ * u
+
+    with Builder() as m:
+        a = m.input('a')
+        b = myrecord(x=a, p=2.0)
+        m.output(b=b)
+
+    init = dict(a = 1.0)
+    b, tape = m.compute(init=init, vout='b', monitor=print, return_tape=True)
+
+    assert b == 2.0
+    assert 'p' not in tape[0].impl_kwargs
+    assert 'u' in tape[0].impl_kwargs
+
+def test_operator_record_extra():
+    # assert used extra args are recored on the tape
+    @operator
+    class myrecord:
+        ain = {'x' : '*'}
+        aout = {'y' : '*'}
+
+        def apl(self, x, p):
+            return dict(y=x * p, extra=p)
+
+        def rcd(self, x, p, y, extra):
+            return dict(x=x, u=p, extra=extra)
 
         def vjp(self, x, _y, u):
             return _y * u

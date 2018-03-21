@@ -163,7 +163,11 @@ class Primitive(object):
 
             Returns: dict that goes into the tape, will be available in vjp and jpv
         """
-        return type(self).record_impl(self, **kwargs)
+        # merge the two dictionaries, prioritizing kwargs (inputs).
+        d = {}
+        d.update(r)
+        d.update(kwargs)
+        return type(self).record_impl(self, **d)
 
 
 def _infer_model(var):

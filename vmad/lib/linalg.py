@@ -12,7 +12,7 @@ class mul:
     def apl(self, x1, x2):
         return dict(y = x1 * x2)
 
-    def rcd(self, x1, x2):
+    def rcd(self, x1, x2, y):
         model = self.find_model()
         # the other value is not needed, 0 should work.
         if isinstance(self.varin['x1'].symbol, Literal):
@@ -170,7 +170,7 @@ class take:
     def apl(self, x, i, axis):
         return dict(y=numpy.take(x, i, axis=axis))
 
-    def rcd(self, x, i, axis):
+    def rcd(self, x, i, axis, y):
         return dict(xshape = numpy.shape(x), i=i, axis=axis)
 
     def vjp(self, _y, i, axis, xshape):
@@ -191,7 +191,7 @@ class reshape:
     def apl(self, x, shape):
         return dict(y = numpy.reshape(x, shape))
 
-    def rcd(self, x, shape):
+    def rcd(self, x, shape, y):
         return dict(xshape = numpy.shape(x), shape=shape)
 
     def vjp(self, _y, xshape):
@@ -208,7 +208,7 @@ class sum:
     def apl(self, x, axis=None):
         return dict(y = numpy.sum(x, axis=axis))
 
-    def rcd(self, x, axis=None):
+    def rcd(self, x, y, axis=None):
         return dict(xshape = numpy.shape(x), axis=axis)
 
     def vjp(self, _y, xshape, axis):
