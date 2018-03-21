@@ -62,10 +62,12 @@ class r2c:
     aout = {'y' : 'ComplexField'}
 
     def apl(self, x):
-        return dict(y=x.r2c())
-    def vjp(self, _y):
+        return dict(y=x.r2c(), pm=x.pm)
+    def vjp(self, _y, pm):
+        _y = pm.create(mode='complex', value=_y)
         return dict(_x=_y.r2c_vjp())
-    def jvp(self, x_):
+    def jvp(self, x_, pm):
+        x_ = pm.create(mode='real', value=x_)
         return dict(y_=x_.r2c())
 
 @operator
@@ -74,10 +76,12 @@ class c2r:
     aout = {'y' : 'RealField'}
 
     def apl(self, x):
-        return dict(y=x.c2r())
-    def vjp(self, _y):
+        return dict(y=x.c2r(), pm=x.pm)
+    def vjp(self, _y, pm):
+        _y = pm.create(mode='real', value=_y)
         return dict(_x=_y.c2r_vjp())
-    def jvp(self, x_):
+    def jvp(self, x_, pm):
+        x_ = pm.create(mode='complex', value=x_)
         return dict(y_=x_.c2r())
 
 def nyquist_mask(v, i, Nmesh):
@@ -119,6 +123,7 @@ class paint:
 
     def vjp(self, _mesh, x, mass, layout, pm):
         N = pm.comm.allreduce(len(x))
+        _mesh = pm.create(mode='real', value=_mesh)
         _x, _mass = pm.paint_vjp(_mesh, x, layout=layout, mass=mass)
         _x[...] *= 1.0 * pm.Nmesh.prod() / N
         _mass[...] *= 1.0 * pm.Nmesh.prod() / N
@@ -145,15 +150,16 @@ class readout:
     def apl(self, mesh, x, layout, resampler=None):
         N = mesh.pm.comm.allreduce(len(x))
         value = mesh.readout(x, layout=layout, resampler=resampler)
-        return dict(value=value)
+        return dict(value=value, pm=mesh.pm)
 
-    def vjp(self, _value, x, layout, mesh, resampler=None):
+    def vjp(self, _value, x, layout, mesh, pm, resampler=None):
         _mesh, _x = mesh.readout_vjp(x, _value, layout=layout, resampler=resampler)
         return dict(_mesh=_mesh, _x=_x, _layout=0)
 
-    def jvp(self, x_, mesh_, x, layout, layout_, mesh, resampler=None):
+    def jvp(self, x_, mesh_, x, layout, layout_, mesh, pm, resampler=None):
         if mesh_ is 0: mesh_ = None
         if x_ is 0: x_ = None
+        mesh = pm.create(mode='real', value=mesh)
         value_ = mesh.readout_jvp(x, v_self=mesh_, v_pos=x_, layout=layout, resampler=resampler)
         return dict(value_=value_)
 
