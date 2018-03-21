@@ -1,6 +1,7 @@
 from __future__ import print_function
 from pprint import pprint
 from vmad.core.operator import add
+from vmad.lib.linalg import mul
 from vmad.core.model import Builder
 import pytest
 
@@ -120,7 +121,7 @@ def test_model_compute_with_jvp():
 def test_model_compute_with_gnDp():
     with Builder() as m:
         a = m.input('a')
-        t1 = add(x1=a, x2=a)
+        t1 = mul(x1=a, x2=a)
         m.output(b=t1)
 
     init = [('a', 1)]
@@ -129,6 +130,6 @@ def test_model_compute_with_gnDp():
                             init=init,
                             v=[('a_', 1.0)],
                             )
-    assert b == 2.0
+    assert b == 1.0
     assert _a_ == 4.0
 
