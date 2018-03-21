@@ -26,6 +26,9 @@ def autooperator(kls):
     argnames_vjp = list(argnames)
     argnames_jvp = list(argnames)
 
+    argnames_vjp.append('##tape')
+    argnames_jvp.append('##tape')
+
     kls.ain = OrderedDict(kls.ain)
     kls.aout = OrderedDict(kls.aout)
 
@@ -63,7 +66,11 @@ def autooperator(kls):
         y['##tape'] = tape
         return y
 
+    def rcd(self, **kwargs):
+        return kwargs
+
     def vjp(self, **kwargs):
+        tape = kwargs['##tape']
         m = _build(kwargs)
 
         init = [(a.name, kwargs[a.name]) for a in m._vin]
@@ -73,6 +80,7 @@ def autooperator(kls):
         return vjp
 
     def jvp(self, **kwargs):
+        tape = kwargs['##tape']
         m = _build(kwargs)
         init = [(a.name, kwargs[a.name]) for a in m._vin]
         vout = [var.name for var in m._vout]
@@ -80,7 +88,7 @@ def autooperator(kls):
         y, jvp = m.compute_with_jvp(vout, init=kwargs, v=v, return_dict=True)
         return jvp
 
-    kls._apl = _make_primitive(kls, 'apl', apl, argnames=argnames)
+    kls._apl = _make_primitive(kls, 'apl', apl, argnames=argnames, record_impl=rcd)
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)
     kls._jvp = _make_primitive(kls, 'jvp', jvp, argnames=argnames_jvp)
 

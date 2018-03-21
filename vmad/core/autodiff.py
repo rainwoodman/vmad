@@ -11,7 +11,6 @@ def prepare_opr_kwargs(record, model):
     impl_kwargs = record.impl_kwargs
 
     kwargs = {}
-
     return impl_kwargs
 
 def create_output_vjp(ref, model):
