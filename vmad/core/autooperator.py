@@ -59,8 +59,13 @@ def autooperator(kls):
         return m
 
     def apl(self, **kwargs):
-        m = _build(kwargs)
-        init = [(a, kwargs[a]) for a in self.ain.keys()]
+        if hasattr(self, '__bound_model__'):
+            m = self.__bound_model__
+            init = [(a, kwargs[a]) for a in self.ain.keys()]
+        else:
+            m = _build(kwargs)
+            init = [(a, kwargs[a]) for a in self.ain.keys()]
+
         vout = list(self.aout.keys())
         y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
         y['##tape'] = tape
@@ -96,13 +101,26 @@ def autooperator(kls):
     # FIXME: add docstring / argnames
     # shall be the list of extra args
     def build(**kwargs):
+        """ Create a computing graph model for the operator with the given hyper parameters """
         for argname in kwargs:
             if argname in kls.ain:
                 raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
 
         return _build(kwargs)
 
-    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : staticmethod(build)})
+    def bind(**kwargs):
+        """ Create a bound autooperator where the hyperparameter are already given.
+
+            Instantiating the returned operator no longer requires the hyperparameters.
+        """
+        for argname in kwargs:
+            if argname in kls.ain:
+                raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
+
+        m = _build(kwargs)
+        return type(kls.__name__, (Operator, kls, kls._apl), {'__bound_model__' : m})
+
+    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : staticmethod(build), 'bind' : staticmethod(bind)})
 
 @autooperator
 class example:
@@ -116,4 +134,3 @@ class example:
         for i in range(n):
             x = add(x1=x, x2=x)
         return dict(y=x)
-
