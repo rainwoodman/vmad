@@ -73,10 +73,21 @@ class ChiSquareOperator:
 from abopt.abopt2 import Problem as BaseProblem, VectorSpace
 
 class ChiSquareProblem(BaseProblem):
+    """ Defines a chisquare problem, which is
 
+        .. math::
+
+            y = \sum_i [R_i(F(s))]^2
+
+        F : forward_operator
+
+        [R_i] : residuals
+
+        comm : The problem is defined on a MPI communicator -- must be consistent
+        with forward_operator and residuals. (usually just pm.comm or MPI.COMM.WORLD)
+
+    """
     def __init__(self, comm, forward_operator, residuals):
-        """
-        """
         self.residuals = residuals
         self.forward_operator = forward_operator
         self.comm = comm
