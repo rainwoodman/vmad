@@ -29,6 +29,9 @@ class Symbol(object):
         # a list of nodes that makes use of the symbol
         self.references = []
 
+    def __getattr__(self, attrname):
+        return AttrSymbol(self.model, self, attrname)
+
     def add_reference(self, node):
         return Ref(self, node)
 
@@ -121,6 +124,23 @@ class Literal(Symbol):
 
     def resolve(self, context):
         return self.value
+
+class AttrSymbol(Literal):
+    """ Represents accessing a member attribute of a symbol.
+
+        The attribute is always treated as a literal. The suitable context
+        is saying getting the size of an array.
+    """
+    def __init__(self, model, parent, attrname):
+        Literal.__init__(self, model, None)
+        self.parent = parent
+        self.attrname = attrname
+
+    def resolve(self, context):
+        return getattr(self.parent.resolve(context), self.attrname)
+
+    def __repr__(self):
+        return "%s.%s" % (str(self.parent), self.attrname)
 
 class ZeroLiteral(Literal):
     """ A ZeroLiteral is specially used to mark zeros in gradient propagation

@@ -133,3 +133,24 @@ def test_model_compute_with_gnDp():
     assert b == 1.0
     assert _a_ == 4.0
 
+def test_model_attr():
+    import numpy
+    with Builder() as m:
+        a = m.input('a')
+        t1 = add(x1=a, x2=a.size)
+        m.output(c=t1)
+
+    init = dict(a=numpy.array([2,]))
+
+    c, tape = m.compute(init=init, vout='c', return_tape=True)
+    assert c == 3
+
+    vjp = tape.get_vjp()
+    init = dict(_c=1.0)
+    _a = vjp.compute(init=init, vout='_a', monitor=print)
+    assert _a == 1.0
+
+    jvp = tape.get_jvp()
+    init = dict(a_=1.0)
+    c_ = jvp.compute(init=init, vout='c_', monitor=print)
+    assert c_ == 1.0
