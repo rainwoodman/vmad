@@ -12,7 +12,14 @@ from abopt.abopt2 import real_vector_space, Problem, VectorSpace
 
 from nbodykit.cosmology import Planck15, LinearPower
 
+oldprint = print
+
 pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=400.)
+
+def print(*args):
+    if pm.comm.rank == 0:
+        oldprint(*args)
+
 powerspectrum = LinearPower(Planck15, 0)
 noise_powerspectrum = lambda k: 100.
 
@@ -22,27 +29,45 @@ n = pm.generate_whitenoise(333, unitary=True).apply(
 noise_variance = noise_powerspectrum(0.) / (pm.BoxSize / pm.Nmesh).prod()
 
 wn = pm.generate_whitenoise(555, unitary=True)
-x = wn[...]
 
+x = wn[...]
 x = numpy.stack([x.real, x.imag], -1)
 
 ForwardModelHyperParameters = dict(
             q = pm.generate_uniform_particle_grid(),
-            stages=[],
+            stages=[0.4, 0.6, 1.0],
             cosmology=Planck15,
             powerspectrum=powerspectrum,
             pm=pm)
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-d, wn, s = ForwardOperator.build().compute(('fs', 'wn', 's'), init=dict(x=x))
-print(d, wn, s)
+fs, wn, s = ForwardOperator.build().compute(('fs', 'wn', 's'), init=dict(x=x))
+
+def save_truth(filename, fs, wn, s, n):
+    from nbodykit.lab import FieldMesh
+
+
+    print('<fs>, <wn>, <s>', fs.cmean(), wn.cmean(), s.c2r().cmean())
+
+    d = FieldMesh(fs + n)
+    wn = FieldMesh(wn)
+    fs = FieldMesh(fs)
+    s = FieldMesh(s)
+
+    wn.save(filename, dataset='wn', mode='real')
+    s.save(filename, dataset='s', mode='real')
+    fs.save(filename, dataset='fs', mode='real')
+    d.save(filename, dataset='d', mode='real')
+
+save_truth('/tmp/bar-truth', fs=fs, wn=wn, s=s, n=n)
+
 problem = cosmo4d.ChiSquareProblem(pm.comm,
         ForwardOperator,
         [
             cosmo4d.LNResidualOperator.bind(),
-#            cosmo4d.NLResidualOperator.bind(d=d[...].sum(axis=-1)),
-            cosmo4d.NLResidualOperator.bind(d=d + n, sigma=noise_variance ** 0.5),
+#            cosmo4d.NLResidualOperator.bind(d=d[...].sum(axis=-1), sigma=noise_variance ** 0.5),
+            cosmo4d.NLResidualOperator.bind(d=fs + n, sigma=noise_variance ** 0.5),
         ]
         )
 
@@ -53,16 +78,22 @@ problem.cg_maxiter= 10
 trcg = TrustRegionCG()
 trcg.cg_monitor = print
 
+def monitor(state):
+    #problem.save('/tmp/bar-%04d' % state['nit'], state)
+    print(state)
+
 lbfgs = LBFGS(maxiter=30)
-print(d.cmean(), wn.cmean(), s.c2r().cmean())
-print('objective =', problem.f(x))
-print((wn ** 2).csum())
+print('objective(truth) =', problem.f(x), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+
 #print('gradient = ', problem.g(x))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))
-print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
+#print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
+
 """
 x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
 x1 = trcg.minimize(problem, x1['x'], monitor=print)
 """
 #x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
-x1 = trcg.minimize(problem, x * 0.001, monitor=print)
+
+x1 = trcg.minimize(problem, x * 0.001, monitor=monitor)
+

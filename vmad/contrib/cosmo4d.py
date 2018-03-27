@@ -70,7 +70,7 @@ class ChiSquareOperator:
         chi2 = mpi.allreduce(chi2, comm)
         return dict(y = chi2)
 
-from abopt.abopt2 import real_vector_space, Problem as BaseProblem, VectorSpace
+from abopt.abopt2 import Problem as BaseProblem, VectorSpace
 
 class ChiSquareProblem(BaseProblem):
 
@@ -94,16 +94,13 @@ class ChiSquareProblem(BaseProblem):
             m.output(y=y)
 
         def objective(x):
-            print('obj', (x**2).sum())
             return m.compute(vout='y', init=dict(x=x))
 
         def gradient(x):
-            print('grad', (x**2).sum())
             y, [vjp] = m.compute_with_vjp(init=dict(x=x), v=dict(_y=1.0))
             return vjp
 
         def hessian_vector_product(x, v):
-            print('hvp', (x**2).sum())
             Dv = 0
 
             replay = forward_operator.precompute(x=x)
@@ -122,11 +119,38 @@ class ChiSquareProblem(BaseProblem):
             # H is 2 JtJ, see wikipedia on Gauss Newton.
             return Dv * 2
 
-        vs = real_vector_space
+        def addmul(a, b, c, p=1):
+            """ a + b * c ** p, follow the type of b """
+            if p is not 1: c = c ** p
+            c = b * c
+            if a is not 0: c = c + a
+            return c
 
+        def dot(a, b):
+            """ einsum('i,i->', a, b) """
+            return self.comm.allreduce((a * b).sum())
+
+        vs = VectorSpace(addmul=addmul, dot=dot)
         BaseProblem.__init__(self,
                         vs = vs,
                         objective=objective,
                         gradient=gradient,
                         hessian_vector_product=hessian_vector_product)
 
+    def save(self, filename, state):
+        with Builder() as m:
+            x = m.input('x')
+            wn, s, fs = self.forward_operator(x)
+            m.output(wn=wn, s=s, fs=fs)
+
+        wn, s, fs = m.compute(['wn', 's', 'fs'], init=dict(x=state['x']))
+
+        from nbodykit.lab import FieldMesh
+
+        wn = FieldMesh(wn)
+        s = FieldMesh(s)
+        fs = FieldMesh(fs)
+
+        wn.save(filename, dataset='wn', mode='real')
+        s.save(filename, dataset='s', mode='real')
+        fs.save(filename, dataset='fs', mode='real')
