@@ -136,11 +136,12 @@ def test_model_compute_with_gnDp():
 def test_model_attr():
     import numpy
     with Builder() as m:
-        a = m.input('a')
-        t1 = add(x1=a, x2=a.size)
+        a, b = m.input('a', 'b')
+        d, = add(x1=b, x2=1)
+        t1 = add(x1=a, x2=b.size)
         m.output(c=t1)
 
-    init = dict(a=numpy.array([2,]))
+    init = dict(a=2, b=numpy.array([2,]))
 
     c, tape = m.compute(init=init, vout='c', return_tape=True)
     assert c == 3

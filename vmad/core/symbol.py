@@ -24,12 +24,15 @@ class Symbol(object):
         assert isinstance(model, Model)
 
         self._model = weakref.ref(model)
+        self._parent = None
         self.name = name
 
         # a list of nodes that makes use of the symbol
         self.references = []
 
     def __getattr__(self, attrname):
+        if attrname.startswith('_'):
+            raise AttributeError
         return AttrSymbol(self.model, self, attrname)
 
     def add_reference(self, node):
@@ -93,7 +96,15 @@ class Ref(object):
         return "&[%s:%d]" % (self.symbol.name, self.ref_id)
 
     def get_symbol_names(self):
-        return set([self.symbol.name])
+        l = set([])
+        symbol = self.symbol
+        # recusrively get the name of the parents
+        # to handle AttrSymbol and CallSymbol
+        while hasattr(symbol, '_parent'):
+            if symbol.name is not None:
+                l = l.union([symbol.name])
+            symbol = symbol._parent
+        return l
 
 class ListRef(object):
     def __init__(self, symbol, node):
@@ -133,14 +144,29 @@ class AttrSymbol(Literal):
     """
     def __init__(self, model, parent, attrname):
         Literal.__init__(self, model, None)
-        self.parent = parent
-        self.attrname = attrname
+        self._parent = parent
+        self._attrname = attrname
 
     def resolve(self, context):
-        return getattr(self.parent.resolve(context), self.attrname)
+        return getattr(self._parent.resolve(context), self._attrname)
+
+    def __call__(self, *args, **kwargs):
+        return CallSymbol(self.model, self, args, kwargs)
 
     def __repr__(self):
-        return "%s.%s" % (str(self.parent), self.attrname)
+        return "%s.%s" % (str(self._parent), self._attrname)
+
+class CallSymbol(Literal):
+    """ Represents calling a member attribute of a symbol.
+    """
+    def __init__(self, model, parent, args, kwargs):
+        Literal.__init__(self, model, None)
+        self._parent = parent
+        self._args = args
+        self._kwargs = kwargs
+
+    def resolve(self, context):
+        return self._parent.resolve(context)(*self._args, **self._kwargs)
 
 class ZeroLiteral(Literal):
     """ A ZeroLiteral is specially used to mark zeros in gradient propagation
