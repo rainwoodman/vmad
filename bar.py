@@ -29,12 +29,14 @@ ForwardModelHyperParameters = dict(
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-d = ForwardOperator.build().compute('rho', init=dict(x=x))
-
+d, wn, s = ForwardOperator.build().compute(('fs', 'wn', 's'), init=dict(x=x))
+print(d, wn, s)
 problem = cosmo4d.ChiSquareProblem(pm.comm,
+        ForwardOperator,
         [
-            cosmo4d.PriorOperator.bind(),
-            cosmo4d.ResidualOperator.bind(d=d, ForwardOperator=ForwardOperator)
+            cosmo4d.LNResidualOperator.bind(),
+#            cosmo4d.NLResidualOperator.bind(d=d[...].sum(axis=-1)),
+            cosmo4d.NLResidualOperator.bind(d=d),
         ]
         )
 
@@ -46,8 +48,9 @@ trcg = TrustRegionCG()
 trcg.cg_monitor = print
 
 lbfgs = LBFGS(maxiter=30)
-print(d.cmean())
+print(d.cmean(), wn.cmean(), s.c2r().cmean())
 print('objective =', problem.f(x))
+print((wn ** 2).csum())
 #print('gradient = ', problem.g(x))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))
 print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
