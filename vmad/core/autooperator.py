@@ -31,6 +31,7 @@ def autooperator(kls):
 
     kls.ain = OrderedDict(kls.ain)
     kls.aout = OrderedDict(kls.aout)
+    kls.argnames = argnames
 
     # add v arguments
     for argname in kls.aout:
@@ -38,37 +39,8 @@ def autooperator(kls):
     for argname in kls.ain:
         argnames_jvp.append(argname + '_')
 
-    def _build(kwargs):
-
-        model_args = {}
-        # copy extra args of the main function
-        for argname in argnames:
-            if argname not in kls.ain:
-                model_args[argname] = kwargs[argname]
-
-        with Builder() as m:
-            # add input args as variables
-            for argname in kls.ain:
-                model_args[argname] = m.input(argname)
-            r = impl(m, **model_args)
-            # assert outputs are generated
-            for argname in kls.aout:
-                if argname not in r:
-                    raise ModelError("output arg '%s' is not produced by the model" % argname)
-            m.output(**r)
-        return m
-
     def apl(self, **kwargs):
-        if hasattr(self, '__bound_model__'):
-            m = self.__bound_model__
-            init = [(a, kwargs[a]) for a in self.ain.keys()]
-        else:
-            m = _build(kwargs)
-            init = [(a, kwargs[a]) for a in self.ain.keys()]
-
-        vout = list(self.aout.keys())
-        y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
-        y['##tape'] = tape
+        y = compute(type(self), kwargs)
         return y
 
     def rcd(self, **kwargs):
@@ -98,30 +70,91 @@ def autooperator(kls):
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)
     kls._jvp = _make_primitive(kls, 'jvp', jvp, argnames=argnames_jvp)
 
-    # FIXME: add docstring / argnames
-    # shall be the list of extra args
-    def build(**kwargs):
-        """ Create a computing graph model for the operator with the given hyper parameters """
-        for argname in kwargs:
-            if argname in kls.ain:
-                raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
+    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : classmethod(build), 'bind' : classmethod(bind), 'precompute' : classmethod(precompute)})
 
-        return _build(kwargs)
+def _build(kls, kwargs):
+    if hasattr(kls, '__bound_model__'):
+        m = kls.__bound_model__
+        return m
 
-    def bind(**kwargs):
-        """ Create a bound autooperator where the hyperparameter are already given.
+    impl = unbound(kls.main)
 
-            Instantiating the returned operator no longer requires the hyperparameters.
-        """
-        for argname in kwargs:
-            if argname in kls.ain:
-                raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
+    model_args = {}
+    # copy extra args of the main function
+    for argname in kls.argnames:
+        if argname not in kls.ain:
+            model_args[argname] = kwargs[argname]
 
-        m = _build(kwargs)
-        def build(): return m
-        return type(kls.__name__, (Operator, kls, kls._apl), {'__bound_model__' : m, 'build': staticmethod(build)})
+    with Builder() as m:
+        # add input args as variables
+        for argname in kls.ain:
+            model_args[argname] = m.input(argname)
+        r = impl(m, **model_args)
+        # assert outputs are generated
+        for argname in kls.aout:
+            if argname not in r:
+                raise ModelError("output arg '%s' is not produced by the model" % argname)
+        m.output(**r)
+    return m
 
-    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : staticmethod(build), 'bind' : staticmethod(bind)})
+def compute(kls, kwargs):
+    if hasattr(kls, '__bound_tape__'):
+        tape = kls.__bound_tape__
+        y = {}
+        y.update(tape.out)
+    else :
+        m = _build(kls, kwargs)
+        init = [(a, kwargs[a]) for a in kls.ain.keys()]
+
+        vout = list(kls.aout.keys())
+        y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
+    y['##tape'] = tape
+    return y
+
+# FIXME: add docstring / argnames
+# shall be the list of extra args
+def build(kls, **kwargs):
+    """ Create a computing graph model for the operator with the given hyper parameters """
+    for argname in kwargs:
+        if argname in kls.ain:
+            raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
+
+    return _build(kls, kwargs)
+
+def precompute(kls, **kwargs):
+    """ Create a bound autooperator where the hyperparameter and parameters are both given; the model
+        is compuated, and the tape is recorded.
+
+        Instantiating the returned operator will be an exact replay of the tape, regardless of the parameters
+    """
+    y = compute(kls, kwargs)
+    m = _build(kls, kwargs)
+    tape = y['##tape']
+    return type(kls.__name__, (kls, ),
+            {
+            '__bound_tape__' : tape,
+            '__bound_model__' : m,
+            }
+            )
+
+def bind(kls, **kwargs):
+    """ Create a bound autooperator where the hyperparameter are already given.
+
+        Instantiating the returned operator no longer requires the hyperparameters.
+    """
+    for argname in kwargs:
+        if argname in kls.ain:
+            raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
+
+    m = _build(kls, kwargs)
+
+    return type(kls.__name__, (kls,), {
+            '__bound_model__' : m,
+            'build': classmethod(build),
+            'precompute': classmethod(precompute),
+
+            })
+
 
 @autooperator
 class example:

@@ -36,7 +36,7 @@ def test_model_nested_build():
     y, tape = m.compute(init=init, vout='y', monitor=print, return_tape=True)
     assert y == 4.0
 
-def test_autooperator_partial():
+def test_autooperator_bind():
 
     from vmad.core.autooperator import example
 
@@ -57,6 +57,30 @@ def test_autooperator_partial():
 
     assert not hasattr(example, '__bound_model__')
     assert hasattr(op1, '__bound_model__')
+
+    op1.build()
+
+def test_autooperator_precompute():
+
+    from vmad.core.autooperator import example
+
+    op1 = example.precompute(n=2, x=1)
+    m = example.build(n=2)
+
+    with Builder() as m:
+        a = m.input('a')
+        b = example(a, 2)
+        c = op1(a)
+        m.output(b=b, c=c)
+
+    init = dict(a = 1.0)
+    (b,c), tape = m.compute(init=init, vout=['b', 'c'], monitor=print, return_tape=True)
+
+    assert b == c
+    assert b == 4.0
+
+    assert not hasattr(example, '__bound_tape__')
+    assert hasattr(op1, '__bound_tape__')
 
     op1.build()
 
