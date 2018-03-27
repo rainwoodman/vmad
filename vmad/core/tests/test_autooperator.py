@@ -57,3 +57,6 @@ def test_autooperator_partial():
 
     assert not hasattr(example, '__bound_model__')
     assert hasattr(op1, '__bound_model__')
+
+    op1.build()
+

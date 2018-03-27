@@ -118,7 +118,8 @@ def autooperator(kls):
                 raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
 
         m = _build(kwargs)
-        return type(kls.__name__, (Operator, kls, kls._apl), {'__bound_model__' : m})
+        def build(): return m
+        return type(kls.__name__, (Operator, kls, kls._apl), {'__bound_model__' : m, 'build': staticmethod(build)})
 
     return type(kls.__name__, (Operator, kls, kls._apl), {'build' : staticmethod(build), 'bind' : staticmethod(bind)})
 
