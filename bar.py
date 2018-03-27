@@ -14,6 +14,12 @@ from nbodykit.cosmology import Planck15, LinearPower
 
 pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=400.)
 powerspectrum = LinearPower(Planck15, 0)
+noise_powerspectrum = lambda k: 100.
+
+n = pm.generate_whitenoise(333, unitary=True).apply(
+        lambda k, v: v * (noise_powerspectrum(k) / pm.BoxSize.prod()) ** 0.5).c2r()
+
+noise_variance = noise_powerspectrum(0.) / (pm.BoxSize / pm.Nmesh).prod()
 
 wn = pm.generate_whitenoise(555, unitary=True)
 x = wn[...]
@@ -36,7 +42,7 @@ problem = cosmo4d.ChiSquareProblem(pm.comm,
         [
             cosmo4d.LNResidualOperator.bind(),
 #            cosmo4d.NLResidualOperator.bind(d=d[...].sum(axis=-1)),
-            cosmo4d.NLResidualOperator.bind(d=d),
+            cosmo4d.NLResidualOperator.bind(d=d + n, sigma=noise_variance ** 0.5),
         ]
         )
 

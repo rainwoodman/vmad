@@ -29,8 +29,9 @@ class FastPMOperator:
 class NLResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
-    def main(self, wn, s, fs, d):
+    def main(self, wn, s, fs, d, sigma):
         r = linalg.add(fs, d * -1)
+        r = linalg.mul(r, sigma ** -1)
 
         return dict(y = r)
 
@@ -38,7 +39,7 @@ class NLResidualOperator:
 class SmoothedNLResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
-    def main(self, wn, s, fs, d, scale):
+    def main(self, wn, s, fs, d, sigma, scale):
         r = linalg.add(fs, d * -1)
         def tf(k):
             k2 = sum(ki ** 2 for ki in k)
@@ -46,6 +47,7 @@ class SmoothedNLResidualOperator:
         c = fastpm.r2c(r)
         c = fastpm.apply_transfer(c, tf)
         r = fastpm.c2r(c)
+        r = linalg.mul(r, sigma ** -1)
         return dict(y = r)
 
 @autooperator
