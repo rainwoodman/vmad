@@ -10,11 +10,6 @@ from abopt.abopt2 import real_vector_space, Problem, VectorSpace
 
 from nbodykit.cosmology import Planck15, LinearPower
 
-pm = fastpm.ParticleMesh([32, 32], BoxSize=128)#, 32], BoxSize=128.)
-powerspectrum = LinearPower(Planck15, 0)
-
-q = pm.generate_uniform_particle_grid()
-
 @autooperator
 class nl3d:
     ain = [('x', '*')]
@@ -25,13 +20,15 @@ class nl3d:
 
         rhok = fastpm.induce_correlation(wnk, powerspectrum, pm)
 
-#        dx, p, f = fastpm.nbody(rhok, q, stages, cosmology, pm)
-#        x = linalg.add(q, dx)
-#        layout = fastpm.decompose(x, pm)
-#        rho = fastpm.paint(x, mass=1, layout=layout, pm=pm)
+        if len(stages) == 0:
+            rho = fastpm.c2r(rhok)
+            rho = linalg.add(rho, 1)
+        else:
+            dx, p, f = fastpm.nbody(rhok, q, stages, cosmology, pm)
+            x = linalg.add(q, dx)
+            layout = fastpm.decompose(x, pm)
+            rho = fastpm.paint(x, mass=1, layout=layout, pm=pm)
 
-        rho = fastpm.c2r(rhok)
-        rho = linalg.add(rho, 1)
         return dict(rho = rho)
 
 @autooperator
@@ -66,20 +63,10 @@ class ObjectiveOperator:
         prior = linalg.sum(linalg.mul(p, p))
         prior = mpi.allreduce(prior, pm.comm)
 
-#        prior = linalg.mul(prior, 0)
         y = linalg.add(chi2, prior)
 
         return dict(y = y, prior=prior, chi2=chi2)
 
-
-
-wn = pm.generate_whitenoise(555, unitary=True)
-x = wn[...]
-
-x = numpy.stack([x.real, x.imag], -1)
-
-forward_model = nl3d.build(q=q, stages=[1.0], cosmology=Planck15, powerspectrum=powerspectrum, pm=pm)
-d = forward_model.compute('rho', init=dict(x=x))
 
 class MyProblem(Problem):
 
@@ -105,11 +92,9 @@ class MyProblem(Problem):
             for graph in self.subgraphs:
                 y, [Dv1] = graph.compute_with_gnDp(vout='y', init=dict(x=x), v=dict(x_=v))
                 Dv = Dv + Dv1
+            # H is 2 JtJ, see wikipedia on Gauss Newton.
             return Dv * 2
 
-#        vs = VectorSpace(
-#            addmul = lambda a, b, c, p=1: a + b * c ** p,
-#            dot = lambda a, b: (a * b).sum())
         vs = real_vector_space
 
         Problem.__init__(self,
@@ -118,41 +103,32 @@ class MyProblem(Problem):
                         gradient=gradient,
                         hessian_vector_product=hessian_vector_product)
 
+pm = fastpm.ParticleMesh([128, 128, 128], BoxSize=400.)
+powerspectrum = LinearPower(Planck15, 0)
+
+q = pm.generate_uniform_particle_grid()
+wn = pm.generate_whitenoise(555, unitary=True)
+x = wn[...]
+
+x = numpy.stack([x.real, x.imag], -1)
+
+forward_model = nl3d.build(q=q, stages=[1.0], cosmology=Planck15, powerspectrum=powerspectrum, pm=pm)
+d = forward_model.compute('rho', init=dict(x=x))
 
 problem = MyProblem(d=d, powerspectrum=powerspectrum, pm=pm)
 problem.maxradius = 100
 problem.initradus = 1
-problem.cg_rtol = 0.01
+problem.cg_rtol = 0.1
+problem.cg_maxiter= 10
 trcg = TrustRegionCG()
+trcg.cg_monitor = print
 
 lbfgs = LBFGS(maxiter=30)
 print(problem.f(x))
 print(problem.g(x))
 print(problem.hessian_vector_product(x, x))
+"""
 x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
 x1 = trcg.minimize(problem, x1['x'], monitor=print)
-#x1 = trcg.minimize(problem, x * 0.001, monitor=print)
-
-#print(f, p)
-#print(gn_hessian_dot(Fmodel, Pmodel, x, x))
-
 """
-model = objective.build(d=d, powerspectrum=powerspectrum, pm=pm)
-y, chi2, prior = model.compute(['y', 'chi2', 'prior'], init=dict(x=x))
-print(y, chi2, prior)
-
-Fmodel = F.build(d=d, powerspectrum=powerspectrum, pm=pm)
-Pmodel = P.build(d=d, powerspectrum=powerspectrum, pm=pm)
-
-f = Fmodel.compute('y', init=dict(x=x))
-p = Pmodel.compute('y', init=dict(x=x))
-
-def gn_hessian_dot(Fmodel, Pmodel, x, v):
-    # gauss newton hessian dot is
-    f, Ftape = Fmodel.compute('y', init=dict(x=x), return_tape=True)
-    p, Ptape = Pmodel.compute('y', init=dict(x=x), return_tape=True)
-    jvjp1 = Ftape.compute_jvjp('_x', ['y'], init=dict(x_ = v))
-    jvjp2 = Ptape.compute_jvjp('_x', ['y'], init=dict(x_ = v))
-
-    return jvjp1 + jvjp2
-"""
+x1 = trcg.minimize(problem, x * 0.001, monitor=print)
