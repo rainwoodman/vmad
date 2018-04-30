@@ -150,3 +150,15 @@ class Test_take(BaseScalarTest):
 
     def model(self, x):
         return linalg.take(x, 2, axis=0)
+
+class Test_sumat(BaseScalarTest):
+    to_scalar = linalg.to_scalar
+    x = numpy.arange(10)
+    at = [0, 1, 3]
+    y = numpy.sum(numpy.add.reduceat(x.reshape(5, 2), at, axis=0) ** 2)
+    x_ = numpy.eye(10)
+
+    def model(self, x):
+        x = linalg.reshape(x, (5, 2))
+
+        return linalg.sumat(x, at=self.at, axis=0)

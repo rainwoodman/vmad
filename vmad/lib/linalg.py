@@ -201,6 +201,29 @@ class reshape:
         return dict(y_=x_.reshape(shape))
 
 @operator
+class sumat:
+    ain  = {'x' : '*'}
+    aout = {'y': '*'}
+
+    def apl(self, x, at, axis=0):
+        if not (numpy.diff(at) >= 0).all():
+            raise ValueError('at must be monotonically increasing')
+
+        y = numpy.add.reduceat(x, at, axis=axis)
+        return y
+
+    def rcd(self, x, y, at, axis=0):
+        return dict(xshape = numpy.shape(x), at=at, axis=axis)
+
+    def vjp(self, _y, xshape, at, axis):
+        _x = numpy.ones(xshape)
+        N = numpy.diff(numpy.concatenate([at, [xshape[axis]]], axis=0))
+        return numpy.repeat(_y, N, axis=axis)
+
+    def jvp(self, x_, at, axis):
+        return numpy.add.reduceat(x_, at, axis=axis)
+
+@operator
 class sum:
     ain  = {'x' : '*'}
     aout = {'y': '*'}

@@ -153,6 +153,9 @@ class AttrSymbol(Literal):
     def __call__(self, *args, **kwargs):
         return CallSymbol(self.model, self, args, kwargs)
 
+    def __getitem__(self, index):
+        return GetItemSymbol(self.model, self, index)
+
     def __repr__(self):
         return "%s.%s" % (str(self._parent), self._attrname)
 
@@ -167,6 +170,17 @@ class CallSymbol(Literal):
 
     def resolve(self, context):
         return self._parent.resolve(context)(*self._args, **self._kwargs)
+
+class GetItemSymbol(Literal):
+    """ Represents getting an item of a symbol.
+    """
+    def __init__(self, model, parent, index):
+        Literal.__init__(self, model, None)
+        self._parent = parent
+        self._index = index
+
+    def resolve(self, context):
+        return self._parent.resolve(context)[index]
 
 class ZeroLiteral(Literal):
     """ A ZeroLiteral is specially used to mark zeros in gradient propagation
