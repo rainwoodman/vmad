@@ -36,6 +36,10 @@ class NLResidualOperator:
 
         return dict(y = r)
 
+    @classmethod
+    def evaluate(self, wn, s, fs, d, sigma):
+        return None
+
 @autooperator
 class SmoothedNLResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
@@ -51,6 +55,10 @@ class SmoothedNLResidualOperator:
         r = linalg.mul(r, sigma ** -1)
         return dict(y = r)
 
+    @classmethod
+    def evaluate(self, wn, s, fs, d, sigma, scale):
+        return None
+
 @autooperator
 class LNResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
@@ -60,6 +68,10 @@ class LNResidualOperator:
         fac = linalg.pow(wn.Nmesh.prod(), -0.5)
         r = linalg.mul(r, fac)
         return dict(y = r)
+
+    @classmethod
+    def evaluate(self, wn, s, fs):
+        return None
 
 @autooperator
 class ChiSquareOperator:
@@ -172,3 +184,20 @@ class ChiSquareProblem(BaseProblem):
         wn.save(filename, dataset='wn', mode='real')
         s.save(filename, dataset='s', mode='real', )
         fs.save(filename, dataset='fs', mode='real')
+
+    def evaluate(self, x):
+        from nbodykit.lab import FFTPower, FieldMesh
+
+        with Builder() as m:
+            xx = m.input('x')
+            wn, s, fs = self.forward_operator(xx)
+            m.output(wn=wn, s=s, fs=fs)
+
+        wn, s, fs = m.compute(['wn', 's', 'fs'], init=dict(x=x))
+
+        d = []
+
+        for operator in self.residuals:
+            d.append(operator.evaluate(wn, s, fs, **operator.hyperargs))
+
+        return d
