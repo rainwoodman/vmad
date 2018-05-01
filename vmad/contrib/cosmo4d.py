@@ -30,21 +30,26 @@ class FastPMOperator:
 class NLResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
-    def main(self, wn, s, fs, d, sigma):
+    def main(self, wn, s, fs, d, invvar):
         r = linalg.add(fs, d * -1)
-        r = linalg.mul(r, sigma ** -1)
+        r = linalg.mul(r, invvar ** 0.5)
 
         return dict(y = r)
 
     @classmethod
     def evaluate(self, wn, s, fs, d, sigma):
-        return None
+        from nbodykit.lab import FFTPower
+        r_x = FFTPower(d, second=fs, mode='1d') 
+        r_fs = FFTPower(fs, mode='1d')  
+        r_d = FFTPower(d, mode='1d')
+
+        return dict(r_fs=r_fs, r_d=r_d, r_x=r_x)
 
 @autooperator
 class SmoothedNLResidualOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
-    def main(self, wn, s, fs, d, sigma, scale):
+    def main(self, wn, s, fs, d, invvar, scale):
         r = linalg.add(fs, d * -1)
         def tf(k):
             k2 = sum(ki ** 2 for ki in k)
@@ -52,15 +57,32 @@ class SmoothedNLResidualOperator:
         c = fastpm.r2c(r)
         c = fastpm.apply_transfer(c, tf)
         r = fastpm.c2r(c)
-        r = linalg.mul(r, sigma ** -1)
+        r = linalg.mul(r, invvar ** 0.5)
         return dict(y = r)
-
-    @classmethod
-    def evaluate(self, wn, s, fs, d, sigma, scale):
-        return None
 
 @autooperator
 class LNResidualOperator:
+    ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
+    aout = [('y', '*')]
+    def main(self, wn, s, fs, d, invvar):
+        """ t is the truth, used only in evaluation. """
+        r = linalg.add(wn, d * -1)
+        fac = linalg.pow(wn.Nmesh.prod(), -0.5)
+        fac = linalg.mul(fac, invvar ** 0.5)
+        r = linalg.mul(r, fac)
+        return dict(y = r)
+
+    @classmethod
+    def evaluate(self, wn, s, fs, t):
+        from nbodykit.lab import FFTPower
+        r_x = FFTPower(s, second=t, mode='1d')
+        r_s = FFTPower(s, mode='1d')
+        r_t = FFTPower(t, mode='1d')
+
+        return dict(r_s=r_s, r_t=r_t, r_x=r_x)
+
+@autooperator
+class PriorOperator:
     ain = [('wn', '*'), ('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
     def main(self, wn, s, fs):

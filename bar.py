@@ -14,7 +14,7 @@ from nbodykit.cosmology import Planck15, LinearPower
 
 oldprint = print
 
-pm = cosmo4d.ParticleMesh([64, 64, 64], BoxSize=400.)
+pm = cosmo4d.ParticleMesh([4, 4, 4], BoxSize=400.)
 
 def print(*args):
     if pm.comm.rank == 0:
@@ -65,9 +65,9 @@ save_truth('/tmp/bar-truth', fs=fs, wn=wn, s=s, n=n)
 problem = cosmo4d.ChiSquareProblem(pm.comm,
         ForwardOperator,
         [
-            cosmo4d.LNResidualOperator,
-#            cosmo4d.NLResidualOperator.bind(d=d[...].sum(axis=-1), sigma=noise_variance ** 0.5),
-            cosmo4d.NLResidualOperator.bind(d=fs + n, sigma=noise_variance ** 0.5),
+            cosmo4d.PriorOperator,
+            cosmo4d.LNResidualOperator.bind(d=wn, invvar=0),
+            cosmo4d.NLResidualOperator.bind(d=fs + n, invvar=noise_variance ** -1),
         ]
         )
 
