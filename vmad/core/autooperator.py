@@ -70,7 +70,7 @@ def autooperator(kls):
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)
     kls._jvp = _make_primitive(kls, 'jvp', jvp, argnames=argnames_jvp)
 
-    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : classmethod(build), 'bind' : classmethod(bind), 'precompute' : classmethod(precompute)})
+    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : classmethod(build), 'bind' : classmethod(bind), 'precompute' : classmethod(precompute), 'hyperargs' : {}})
 
 def _build(kls, kwargs):
     if hasattr(kls, '__bound_model__'):

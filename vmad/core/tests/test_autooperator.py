@@ -44,6 +44,7 @@ def test_autooperator_bind():
     m = example.build(n=2)
 
     assert 'n' in op1.hyperargs
+    assert 'n' not in example.hyperargs
 
     with Builder() as m:
         a = m.input('a')
