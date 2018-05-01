@@ -170,5 +170,6 @@ class example:
             x = add(x1=x, x2=x)
         return dict(y=x)
 
+    @classmethod # must be class method or self will be strange.
     def evaluate(self, x, n):
         pass
