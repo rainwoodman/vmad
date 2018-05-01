@@ -43,6 +43,8 @@ def test_autooperator_bind():
     op1 = example.bind(n=2)
     m = example.build(n=2)
 
+    assert 'n' in op1.hyperargs
+
     with Builder() as m:
         a = m.input('a')
         b = example(a, 2)

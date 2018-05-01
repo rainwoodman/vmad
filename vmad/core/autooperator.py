@@ -137,19 +137,20 @@ def precompute(kls, **kwargs):
             }
             )
 
-def bind(kls, **kwargs):
+def bind(kls, **hyperargs):
     """ Create a bound autooperator where the hyperparameter are already given.
 
         Instantiating the returned operator no longer requires the hyperparameters.
     """
-    for argname in kwargs:
+    for argname in hyperargs:
         if argname in kls.ain:
             raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
 
-    m = _build(kls, kwargs)
+    m = _build(kls, hyperargs)
 
     return type(kls.__name__, (kls,), {
             '__bound_model__' : m,
+            'hyperargs': hyperargs,
             'build': classmethod(build),
             'precompute': classmethod(precompute),
 
@@ -168,3 +169,6 @@ class example:
         for i in range(n):
             x = add(x1=x, x2=x)
         return dict(y=x)
+
+    def evaluate(self, x, n):
+        pass
