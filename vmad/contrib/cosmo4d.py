@@ -119,8 +119,8 @@ class ChiSquareProblem(BaseProblem):
 
             for operator in self.residuals:
                 with Builder() as m:
-                    x = m.input('x')
-                    wn, s, fs = replay(x)
+                    xx = m.input('x')
+                    wn, s, fs = replay(xx)
                     r = operator(wn, s, fs)
                     m.output(y=r)
 
