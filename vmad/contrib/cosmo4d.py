@@ -2,6 +2,7 @@ from vmad import Builder, autooperator
 from vmad.lib import fastpm, mpi, linalg
 
 from pmesh.pm import ParticleMesh
+import numpy
 
 @autooperator
 class FastPMOperator:
@@ -162,6 +163,12 @@ class ChiSquareProblem(BaseProblem):
         s = FieldMesh(s)
         fs = FieldMesh(fs)
 
+        s.attrs['y'] = state['y']
+        s.attrs['nit'] = state['nit']
+        s.attrs['gev'] = state['gev']
+        s.attrs['fev'] = state['fev']
+        s.attrs['hev'] = state['hev']
+
         wn.save(filename, dataset='wn', mode='real')
-        s.save(filename, dataset='s', mode='real')
+        s.save(filename, dataset='s', mode='real', )
         fs.save(filename, dataset='fs', mode='real')
