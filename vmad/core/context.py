@@ -1,4 +1,4 @@
-from .operator import terminal
+from .operator import terminal, watchpoint
 from .error import UnexpectedOutput, ExecutionError, ModelError
 
 class Context(dict):
@@ -30,6 +30,8 @@ class Context(dict):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
         if isinstance(node, terminal._apl):
+            return True
+        if isinstance(node, watchpoint._apl):
             return True
         for argname, var in node.varout.items():
             if var.has_reference(): return True

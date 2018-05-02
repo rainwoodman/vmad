@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
     Routines to define an operator
 
@@ -197,6 +198,21 @@ class add:
 
     def vjp(self, _y):
         return dict(_x1 = _y, _x2 = _y)
+
+    def jvp(self, x1_, x2_):
+        return dict(y_ = x1_ + x2_)
+
+@operator
+class watchpoint:
+    ain  = {'x': '*'}
+    aout = {}
+
+    def apl(self, x, monitor=print):
+        monitor(x)
+        return dict(y = x)
+
+    def vjp(self, _y):
+        return dict(_x = _y)
 
     def jvp(self, x1_, x2_):
         return dict(y_ = x1_ + x2_)
