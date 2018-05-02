@@ -1,4 +1,5 @@
 import weakref
+import inspect
 
 from .error import InferError, UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .symbol import Symbol, Literal, List
@@ -47,6 +48,10 @@ class Primitive(object):
 
             The model is inferred from the input arguments
         """
+        # remember the frame info
+        previous_frame = inspect.currentframe().f_back
+        self._frameinfo = inspect.getframeinfo(previous_frame)
+
         kls = type(self)
 
         _check_primitive_class(kls)
@@ -125,7 +130,7 @@ class Primitive(object):
         return self._name
 
     def __repr__(self):
-        return "%s(%s=>%s)" % (self._name, self.varin, self.varout)
+        return "%s(%s=>%s) at %s:%d" % (self._name, self.varin, self.varout, self._frameinfo[0], self._frameinfo[1])
 
     def call(self, **kwargs):
         """ call the implementation function of the primitive;

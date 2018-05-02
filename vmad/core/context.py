@@ -1,6 +1,13 @@
 from .operator import terminal, watchpoint
 from .error import UnexpectedOutput, ExecutionError, ModelError
 
+_raise_internal_errors = False
+
+def set_raise_internal_errors(flag):
+    global _raise_internal_errors
+    _raise_internal_errors = flag
+
+
 class Context(dict):
     """ A context is a collection of python objects referred by symbol names;
 
@@ -52,13 +59,7 @@ class Context(dict):
         for i, node in enumerate(model):
 
             if self.result_used(node):
-                #try:
-                    self.execute(node, tape)
-                #except ModelError:
-                #    raise
-                #except Exception as e:
-                #    raise ExecutionError("Error computing node : %s. model = %s" % (node, model), e)
-
+                self.execute(node, tape)
             if isinstance(node, terminal._apl):
                 for argname, var in node.varout.items():
                     r[var.name] = self[var.name]
@@ -91,7 +92,14 @@ class Context(dict):
             if argname in node.argnames:
                 kwargs[argname] = value
 
-        r = node.call(**kwargs)
+        if _raise_internal_errors:
+            r = node.call(**kwargs)
+        else:
+            try:
+                r = node.call(**kwargs)
+            except Exception as e:
+                raise ExecutionError(
+            "Error computing node : %s. model = %s" % (node, model), e)
 
         tape.append(node, node.record(kwargs, r))
 
