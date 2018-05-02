@@ -99,7 +99,7 @@ class Context(dict):
                 r = node.call(**kwargs)
             except Exception as e:
                 raise ExecutionError(
-            "Error computing node : %s. model = %s" % (node, model), e)
+            "Error computing node : %s" % (node), e)
 
         tape.append(node, node.record(kwargs, r))
 
