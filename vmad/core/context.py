@@ -4,6 +4,14 @@ from .error import UnexpectedOutput, ExecutionError, ModelError
 _raise_internal_errors = False
 
 def set_raise_internal_errors(flag):
+    """ If raise_internal_errors is set to True, then the errors in
+        node execution are directly raised.
+
+        If False, we will produce a wrapped messsage,
+        which contains the line number where the
+        node is declared. It is easier for debugging and in Python 3+
+        the underlying error message is also printed.
+    """
     global _raise_internal_errors
     _raise_internal_errors = flag
 
