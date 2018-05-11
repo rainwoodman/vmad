@@ -63,6 +63,13 @@ def test_autooperator_bind():
 
     op1.build()
 
+def test_autooperator_compute():
+
+    from vmad.core.autooperator import example
+
+    y = example.compute(n=2, x=1)
+    assert 'y' in y
+
 def test_autooperator_precompute():
 
     from vmad.core.autooperator import example

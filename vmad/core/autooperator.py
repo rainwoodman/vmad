@@ -40,7 +40,7 @@ def autooperator(kls):
         argnames_jvp.append(argname + '_')
 
     def apl(self, **kwargs):
-        y = compute(type(self), kwargs)
+        y = compute(type(self), **kwargs)
         return y
 
     def rcd(self, **kwargs):
@@ -70,7 +70,12 @@ def autooperator(kls):
     kls._vjp = _make_primitive(kls, 'vjp', vjp, argnames=argnames_vjp)
     kls._jvp = _make_primitive(kls, 'jvp', jvp, argnames=argnames_jvp)
 
-    return type(kls.__name__, (Operator, kls, kls._apl), {'build' : classmethod(build), 'bind' : classmethod(bind), 'precompute' : classmethod(precompute), 'hyperargs' : {}})
+    return type(kls.__name__, (Operator, kls, kls._apl),
+            {'build' : classmethod(build),
+             'bind' : classmethod(bind),
+             'compute' : classmethod(compute),
+             'precompute' : classmethod(precompute),
+             'hyperargs' : {}})
 
 def _build(kls, kwargs):
     if hasattr(kls, '__bound_model__'):
@@ -97,7 +102,7 @@ def _build(kls, kwargs):
         m.output(**r)
     return m
 
-def compute(kls, kwargs):
+def compute(kls, **kwargs):
     if hasattr(kls, '__bound_tape__'):
         tape = kls.__bound_tape__
         y = {}
@@ -127,7 +132,7 @@ def precompute(kls, **kwargs):
 
         Instantiating the returned operator will be an exact replay of the tape, regardless of the parameters
     """
-    y = compute(kls, kwargs)
+    y = compute(kls, **kwargs)
     m = _build(kls, kwargs)
     tape = y['##tape']
     return type(kls.__name__, (kls, ),
