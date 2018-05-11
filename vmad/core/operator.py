@@ -216,12 +216,16 @@ class add:
     aout = {'y': '*'}
 
     def apl(self, x1, x2):
+        if x2 is 0: return dict(y = x1)
+        if x1 is 0: return dict(y = x2)
         return dict(y = x1 + x2)
 
     def vjp(self, _y):
         return dict(_x1 = _y, _x2 = _y)
 
     def jvp(self, x1_, x2_):
+        if x2_ is 0: return dict(y_ = x1_)
+        if x1_ is 0: return dict(y_ = x2_)
         return dict(y_ = x1_ + x2_)
 
 # special operator for marking an output
