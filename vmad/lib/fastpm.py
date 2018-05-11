@@ -177,6 +177,36 @@ class decompose:
     def jvp(engine, x_):
         return dict(layout_=0)
 
+@operator
+class gather:
+    aout='y'
+    ain ='x', 'layout'
+
+    def apl(self, x, layout):
+        return dict(y=layout.gather(x))
+
+    def vjp(engine, _y, layout):
+        _x = layout.exchange(_y)
+        return dict(_layout=0, _x=_x)
+
+    def jvp(engine, layout, layout_, x_,):
+        return dict(y_=layout.gather(x_))
+
+@operator
+class exchange:
+    aout='y'
+    ain ='x', 'layout'
+
+    def apl(self, x, layout):
+        return dict(y=layout.exchange(x))
+
+    def vjp(engine, _y, layout):
+        _x = layout.gather(_y)
+        return dict(_layout=0, _x=_x)
+
+    def jvp(engine, layout, layout_, x_,):
+        return dict(y_=layout.exchange(x_))
+
 def fourier_space_neg_gradient(dir):
     def filter(k):
         return - 1j * k[dir]
@@ -311,7 +341,8 @@ class gravity:
         x = linalg.add(dx, q)
         layout = decompose(x, pm)
 
-        rho = paint(x, 1.0, layout, pm)
+        xl = exchange(x, layout)
+        rho = paint(xl, 1.0, None, pm)
         rhok = r2c(rho)
 
         p = apply_transfer(rhok, fourier_space_laplace)
@@ -320,7 +351,8 @@ class gravity:
         for d in range(pm.ndim):
             dx1_c = apply_transfer(p, fourier_space_neg_gradient(d))
             dx1_r = c2r(dx1_c)
-            dx1 = readout(dx1_r, x, layout)
+            dx1l = readout(dx1_r, xl, None)
+            dx1 = gather(dx1l, layout)
             r1.append(dx1)
 
         f = linalg.stack(r1, axis=-1)
@@ -337,9 +369,9 @@ class leapfrog:
     ain = [ ('dx_i', '*'), ('p_i', '*') ]
     aout = [ ('dx', '*'), ('p', '*'), ('f', '*') ]
 
-    def main(self, dx_i, p_i, q, stages, cosmology, pm):
-        #from nbodykit.cosmology import PerturbationGrowth
-        from fastpm.background import PerturbationGrowth
+    def main(self, dx_i, p_i, q, stages, pt, pm):
+
+        Om0 = pt.Om(1.0)
 
         dx = dx_i
         p = p_i
@@ -347,10 +379,9 @@ class leapfrog:
 
         for ai, af in zip(stages[:-1], stages[1:]):
             ac = (ai * af) ** 0.5
-            pt = PerturbationGrowth(cosmology, a=[ai, ac, af])
 
             # kick
-            dp = linalg.mul(f, KickFactor(pt, ai, ai, ac) * 1.5 * cosmology.Om0)
+            dp = linalg.mul(f, KickFactor(pt, ai, ai, ac) * 1.5 * Om0)
             p = linalg.add(p, dp)
 
             # drift
@@ -361,10 +392,10 @@ class leapfrog:
             f = gravity(dx, q, pm)
 
             # kick
-            dp = linalg.mul(f, KickFactor(pt, ac, af, af) * 1.5 * cosmology.Om0)
+            dp = linalg.mul(f, KickFactor(pt, ac, af, af) * 1.5 * Om0)
             p = linalg.add(p, dp)
 
-        f = linalg.mul(f, 1.5 * cosmology.Om0)
+        f = linalg.mul(f, 1.5 * Om0)
         return dict(dx=dx, p=p, f=f)
 
 @autooperator
@@ -382,7 +413,11 @@ class nbody:
 
         dx1, dx2 = lpt(rhok, q, pm)
 
-        pt = PerturbationGrowth(cosmology, a=stages)
+        stages = numpy.array(stages)
+        mid = (stages[1:] * stages[:-1]) ** 0.5
+        support = numpy.concatenate([mid, stages])
+        support.sort()
+        pt = PerturbationGrowth(cosmology, a=support)
         a = stages[0]
 
         E = pt.E(a)
@@ -400,6 +435,6 @@ class nbody:
         p = linalg.add(p1, p2)
         dx = linalg.add(dx1, dx2)
 
-        dx, p, f = leapfrog(dx, p, q, stages, cosmology, pm)
+        dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
 
         return dict(dx=dx, p=p, f=f)

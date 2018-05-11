@@ -101,6 +101,26 @@ class Test_decompose_paint_x(BaseScalarTest):
         y = linalg.add(y, self.mesh) # biasing a bit to get non-zero derivatives.
         return y
 
+class Test_decompose_exchange(BaseScalarTest):
+    to_scalar = fastpm.to_scalar
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
+
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+
+    x = pm.generate_uniform_particle_grid(shift=0.1)
+    y = (1 + mesh).cnorm()
+    x_ = create_bases(x)
+
+    epsilon = 1e-3
+
+    def model(self, x):
+        layout = fastpm.decompose(x, pm=self.pm)
+        x1 = fastpm.exchange(x, layout)
+        y1 = fastpm.paint(x1, mass=1.0, layout=None, pm=self.pm)
+        y = linalg.add(y1, self.mesh) # biasing a bit to get non-zero derivatives.
+        return y
+
 class Test_paint_mass(BaseScalarTest):
     to_scalar = fastpm.to_scalar
 
