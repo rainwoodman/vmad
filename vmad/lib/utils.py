@@ -5,9 +5,14 @@
 """
 
 from vmad.core.operator import operator
+class special:
+    def vjp(self): return 0
+    def jvp(self, *args, **kwargs):
+        print('print', args, kwargs)
+        return
 
 @operator
-class watchpoint:
+class watchpoint(special):
     """ printing a variable or a list of variables.
 
         >>> with Builder() as m:
@@ -25,7 +30,7 @@ class watchpoint:
         return dict(y = x)
 
 @operator
-class assert_isinstance:
+class assert_isinstance(special):
     """ assert a variable is of a certain type """
     ain = 'obj'
     aout = []
@@ -34,7 +39,7 @@ class assert_isinstance:
             raise TypeError('Expecting an instance of %s, got %s', repr(class_or_tuple), repr(type(obj)))
 
 @operator
-class assert_true:
+class assert_true(special):
     """ assert if a function applied to a variable is true.
 
         Examples:

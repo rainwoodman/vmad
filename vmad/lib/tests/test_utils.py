@@ -3,6 +3,7 @@ from __future__ import print_function
 from pprint import pprint
 from vmad.core.model import Builder
 import pytest
+from vmad.lib import linalg
 
 def test_operator_watchpoint():
     from vmad.lib.utils import watchpoint
@@ -12,20 +13,28 @@ def test_operator_watchpoint():
 
     with Builder() as m:
         a = m.input('a')
+        b = linalg.add(a, a)
         watchpoint(a, monitor=monitor)
-        m.output(c=a)
-    init = [('a', 1)]
+        m.output(c=b)
 
+    init = [('a', 1)]
+    for node in m:
+        print('m', node)
+    c, tape = m.compute(init=init, vout='c', return_tape=True)
+    vjp = tape.get_vjp()
+    for node in vjp:
+        print('vjp', node)
     [c], [_a] = m.compute_with_vjp(init=init, v=[('_c', 1.0)])
     assert foo[0] == 1
-    assert c == 1
-    assert _a == 1.0
+    assert c == 2
+    assert _a == 2.0
 
     foo[0] = 0
     c, c_ = m.compute_with_jvp(vout='c', init=init, v=[('a_', 1.0)])
     assert foo[0] == 1
-    assert c == 1
-    assert c_ == 1.0
+    assert c == 2
+    assert c_ == 2.0
+
 
 def test_operator_assert_isinstance():
     from vmad.lib.utils import assert_isinstance
@@ -34,7 +43,9 @@ def test_operator_assert_isinstance():
         a = m.input('a')
         assert_isinstance(a, int)
         m.output(c=a)
+
     init = [('a', 1)]
+    c, tape = m.compute(init=init, return_tape=True, vout='c')
 
     [c], [_a] = m.compute_with_vjp(init=init, v=[('_c', 1.0)])
     assert c == 1
