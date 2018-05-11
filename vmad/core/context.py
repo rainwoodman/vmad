@@ -113,11 +113,7 @@ class Context(dict):
                 raise makeExecutionError(
                     "Error computing node : %s" % (node), e)
 
-        if len(node.varout) > 0:
-            # record to tape only if the function
-            # has effects. special operators does not
-            # get recorded (e.g. watchpoint)
-            tape.append(node, node.record(kwargs, r))
+        tape.append(node, node.record(kwargs, r))
 
         for argname, var in node.varout.items():
             var.store(self, r[argname])
