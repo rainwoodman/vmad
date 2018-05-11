@@ -145,10 +145,12 @@ class Primitive(object):
 
         # allow returning without using a dict
         # if there is only a single output argument
-        if not isinstance(r, dict) and len(self.varout) == 1:
-            argname = next(iter(self.varout.keys()))
-            r = {argname:r}
-
+        if not isinstance(r, dict):
+            if len(self.varout) == 1:
+                argname = next(iter(self.varout.keys()))
+                r = {argname:r}
+            if len(self.varout) == 0:
+                r = {}
         return r
 
     def record(self, kwargs, r):
