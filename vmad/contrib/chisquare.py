@@ -83,7 +83,7 @@ class MPIChiSquareProblem(BaseProblem):
 
         def dot(a, b):
             """ einsum('i,i->', a, b) """
-            return self.comm.allreduce((a * b).sum())
+            return self.comm.allreduce(numpy.sum(a * b))
 
         vs = VectorSpace(addmul=addmul, dot=dot)
         BaseProblem.__init__(self,
