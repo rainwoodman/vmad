@@ -46,3 +46,16 @@ def test_operator_assert_isinstance():
 
     with pytest.raises(TypeError):
         c = m.compute(vout='c', init=dict(a=1.09))
+
+def test_operator_assert_true():
+    from vmad.lib.utils import assert_true
+
+    with Builder() as m:
+        a = m.input('a')
+        assert_true(a, lambda x: isinstance(x, int))
+        m.output(c=a)
+
+    with pytest.raises(AssertionError):
+        c = m.compute(vout='c', init=dict(a=1.09))
+
+    c = m.compute(vout='c', init=dict(a=1))
