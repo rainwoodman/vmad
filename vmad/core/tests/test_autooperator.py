@@ -67,8 +67,7 @@ def test_autooperator_compute():
 
     from vmad.core.autooperator import example
 
-    y = example.compute(n=2, x=1)
-    assert 'y' in y
+    y = example.build(n=2).compute(vout='y', init=dict(x=1))
 
 def test_autooperator_precompute():
 
