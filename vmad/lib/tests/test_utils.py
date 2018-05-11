@@ -18,12 +18,13 @@ def test_operator_watchpoint():
         m.output(c=b)
 
     init = [('a', 1)]
-    for node in m:
-        print('m', node)
+#    for node in m:
+#        print('m', node)
     c, tape = m.compute(init=init, vout='c', return_tape=True)
-    vjp = tape.get_vjp()
-    for node in vjp:
-        print('vjp', node)
+#    vjp = tape.get_vjp()
+#    for node in vjp:
+#        print('vjp', node)
+
     [c], [_a] = m.compute_with_vjp(init=init, v=[('_c', 1.0)])
     assert foo[0] == 1
     assert c == 2
