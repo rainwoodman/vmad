@@ -53,7 +53,7 @@ def connect_output_vjp(ref, model):
             return
 
     # accummulate the partials
-    if ref.ref_id!= len(var.references):
+    if ref.ref_id != len(var.references):
         var_f = model.get(var.vjp_name)
         var_p = model.get(var.vjp_name + '#%d' % ref.ref_id)
         # create a new symbol for the result, with the same name
