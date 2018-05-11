@@ -150,6 +150,8 @@ class Primitive(object):
                 argname = next(iter(self.varout.keys()))
                 r = {argname:r}
             if len(self.varout) == 0:
+                if r is not None:
+                    raise ValueError("Return value of the primitive is not None, while no output arguments are defined")
                 r = {}
         return r
 
