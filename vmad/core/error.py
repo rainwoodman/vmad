@@ -15,3 +15,7 @@ class ExecutionError(ModelError):
         self.reason = reason
         ModelError.__init__(self, msg)
 
+def makeExecutionError(msg, reason):
+    errortype = type("ExecutionError(%s)" % type(reason).__name__,
+            (type(reason), ExecutionError), {})
+    return errortype(msg, reason)

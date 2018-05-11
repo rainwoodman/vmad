@@ -2,7 +2,6 @@ from __future__ import print_function
 
 from pprint import pprint
 from vmad.core.operator import operator
-from vmad.core.operator import watchpoint
 from vmad.core.model import Builder
 import pytest
 
@@ -55,24 +54,6 @@ def test_operator_zero():
     init = dict(a_=0)
     c_ = jvp.compute(init=init, vout='c_', monitor=print)
     assert c_ == 0
-
-def test_operator_watchpoint():
-    foo = [0]
-    def monitor(x):
-        foo[0] = 1
-
-    with Builder() as m:
-        a = m.input('a')
-        watchpoint(a, monitor=monitor)
-        m.output(c=a)
-    init = [('a', 1)]
-
-    [c], [_a] = m.compute_with_vjp(init=init, v=[('_c', 1.0)])
-    assert foo[0] == 1
-
-    foo[0] = 0
-    c, c_ = m.compute_with_jvp(vout='c', init=init, v=[('a_', 1.0)])
-    assert foo[0] == 1
 
 def test_operator_multiple():
     @operator

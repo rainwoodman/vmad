@@ -1,5 +1,5 @@
-from .operator import terminal, watchpoint
-from .error import UnexpectedOutput, ExecutionError, ModelError
+from .operator import terminal
+from .error import UnexpectedOutput, makeExecutionError, ModelError
 
 _raise_internal_errors = False
 
@@ -46,10 +46,13 @@ class Context(dict):
         # may need to fix this in 'compile' or 'optimize'.
         if isinstance(node, terminal._apl):
             return True
-        if isinstance(node, watchpoint._apl):
-            return True
+
         for argname, var in node.varout.items():
             if var.has_reference(): return True
+
+        if len(node.varout) == 0:
+            # special operators without any output always gets run.
+            return True
         return False
 
     def compute(self, model, vout, tape, monitor=None):
@@ -68,6 +71,7 @@ class Context(dict):
 
             if self.result_used(node):
                 self.execute(node, tape)
+
             if isinstance(node, terminal._apl):
                 for argname, var in node.varout.items():
                     r[var.name] = self[var.name]
@@ -106,10 +110,14 @@ class Context(dict):
             try:
                 r = node.call(**kwargs)
             except Exception as e:
-                raise ExecutionError(
-            "Error computing node : %s" % (node), e)
+                raise makeExecutionError(
+                    "Error computing node : %s" % (node), e)
 
-        tape.append(node, node.record(kwargs, r))
+        if len(node.varout) > 0:
+            # record to tape only if the function
+            # has effects. special operators does not
+            # get recorded (e.g. watchpoint)
+            tape.append(node, node.record(kwargs, r))
 
         for argname, var in node.varout.items():
             var.store(self, r[argname])

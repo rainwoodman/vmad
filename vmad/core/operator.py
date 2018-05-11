@@ -131,8 +131,10 @@ def operator(kls):
     kls._apl = _make_primitive(kls, 'apl', unbound(kls.apl),
         record_impl=record_impl)
 
-    kls._vjp = _make_primitive(kls, 'vjp', unbound(kls.vjp))
-    kls._jvp = _make_primitive(kls, 'jvp', unbound(kls.jvp))
+    if hasattr(kls, 'vjp'):
+        kls._vjp = _make_primitive(kls, 'vjp', unbound(kls.vjp))
+    if hasattr(kls, 'jvp'):
+        kls._jvp = _make_primitive(kls, 'jvp', unbound(kls.jvp))
 
     return type(kls.__name__, (Operator, kls, kls._apl), {})
 
@@ -218,21 +220,6 @@ class add:
 
     def vjp(self, _y):
         return dict(_x1 = _y, _x2 = _y)
-
-    def jvp(self, x1_, x2_):
-        return dict(y_ = x1_ + x2_)
-
-@operator
-class watchpoint:
-    ain  = {'x': '*'}
-    aout = {}
-
-    def apl(self, x, monitor=print):
-        monitor(x)
-        return dict(y = x)
-
-    def vjp(self, _y):
-        return dict(_x = _y)
 
     def jvp(self, x1_, x2_):
         return dict(y_ = x1_ + x2_)
