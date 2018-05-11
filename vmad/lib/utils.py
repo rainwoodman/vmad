@@ -7,9 +7,7 @@
 from vmad.core.operator import operator
 class special:
     def vjp(self): return 0
-    def jvp(self, *args, **kwargs):
-        print('print', args, kwargs)
-        return
+    def jvp(self, *args, **kwargs): return
 
 @operator
 class watchpoint(special):
