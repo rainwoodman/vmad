@@ -13,6 +13,26 @@ from __future__ import print_function
 
 class Operator(object): pass
 
+def _to_ordereddict(ain):
+    from collections import OrderedDict
+
+    # convert ain to an ordered dict,
+    # supported syntax:
+    # [('a', '*'), ('b', '*')]
+    # ['a', ('b', '*')]
+    # ['a', 'b']
+    # or a dictionary
+
+    if isinstance(ain, (list, tuple)):
+        ain = [
+            a if isinstance(a, tuple) else (a, '*') for a in ain
+        ]
+    elif not isinstance(ain, (dict, OrderedDict)):
+        # like a scalar, assuming it is string?
+        ain = [ (ain, '*') ]
+
+    return OrderedDict(ain)
+
 def find_primitive_type(node, func):
     # we will only do this on the apl primitives
     # because otherwise this is undefined
@@ -105,6 +125,9 @@ def operator(kls):
     else:
         record_impl = record_copy_autodiff
 
+    kls.ain = _to_ordereddict(kls.ain)
+    kls.aout = _to_ordereddict(kls.aout)
+
     kls._apl = _make_primitive(kls, 'apl', unbound(kls.apl),
         record_impl=record_impl)
 
@@ -134,14 +157,11 @@ def _make_primitive(operator, func, impl, argnames=None, record_impl=record_copy
     """
     from .primitive import Primitive
     from .symbol import Symbol
-    from collections import OrderedDict
 
     assert func in ('apl', 'vjp', 'jvp')
 
     kls = operator
 
-    kls.ain = OrderedDict(kls.ain)
-    kls.aout = OrderedDict(kls.aout)
 
     aout = {}
     ain = {}

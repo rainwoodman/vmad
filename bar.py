@@ -66,13 +66,14 @@ problem = cosmo4d.ChiSquareProblem(pm.comm,
         ForwardOperator,
         [
             cosmo4d.PriorOperator,
-            cosmo4d.LNResidualOperator.bind(d=wn, invvar=0),
+#            cosmo4d.LNResidualOperator.bind(d=wn, invvar=0),
             cosmo4d.NLResidualOperator.bind(d=fs + n, invvar=noise_variance ** -1),
         ]
         )
 
 problem.maxradius = 100
 problem.initradus = 1
+problem.atol = 0.1
 problem.cg_rtol = 0.1
 problem.cg_maxiter= 10
 trcg = TrustRegionCG()

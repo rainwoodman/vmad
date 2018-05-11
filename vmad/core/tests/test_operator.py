@@ -8,8 +8,8 @@ import pytest
 
 @operator
 class error_on_grad:
-    ain = {'x' : '*'}
-    aout = {'y' : '*'}
+    ain = 'x'
+    aout = 'y'
 
     def apl(self, x):
         return x
@@ -22,8 +22,8 @@ class error_on_grad:
 
 @operator
 class error:
-    ain = {'x' : '*'}
-    aout = {'y' : '*'}
+    ain = 'x'
+    aout = 'y'
 
     def apl(self, x):
         raise AssertionError("shall not reach here")
@@ -74,13 +74,40 @@ def test_operator_watchpoint():
     c, c_ = m.compute_with_jvp(vout='c', init=init, v=[('a_', 1.0)])
     assert foo[0] == 1
 
+def test_operator_multiple():
+    @operator
+    class with_defaults:
+        ain = [('x', '*')]
+        aout = 'y'
+
+        def apl(self, x): return x
+        def vjp(self, _y): return _y
+        def jvp(self, x_): return x_
+
+    @operator
+    class with_defaults:
+        ain = [('x', '*'), 'y']
+        aout = 'y'
+
+        def apl(self, x, y): return x
+        def vjp(self, _y): return _y, _y
+        def jvp(self, x_, y_): return x_, y_
+
+    @operator
+    class with_defaults:
+        ain = 'x', 'y'
+        aout = 'y'
+
+        def apl(self, x, y): return x
+        def vjp(self, _y): return _y, _y
+        def jvp(self, x_, y_): return x_, y_
+
+
 def test_operator_defaults():
     @operator
     class with_defaults:
-        ain = {('x', '*')}
-        # for python 2.x need to use this syntax
-        # to preserve orders
-        aout = [('y', '*'),]
+        ain = 'x'
+        aout = 'y'
 
         def apl(self, x, defaults=False):
             assert defaults == False
@@ -139,10 +166,8 @@ def test_operator_skip_unused():
 import numpy
 @operator
 class split:
-    ain = {('x', '*')}
-    # for python 2.x need to use this syntax
-    # to preserve orders
-    aout = [('args', '*'),]
+    ain = 'x'
+    aout = 'args'
 
     def apl(self, x, axis):
         return [numpy.take(x, i, axis=axis) for i in range(numpy.shape(x)[axis])]
@@ -155,10 +180,8 @@ class split:
 
 @operator
 class stack:
-    ain = {('args', '*')}
-    # for python 2.x need to use this syntax
-    # to preserve orders
-    aout = [('y', '*'),]
+    ain = 'args'
+    aout = 'y'
 
     def apl(self, args, axis):
         return numpy.stack(args, axis=axis)
@@ -233,11 +256,10 @@ def test_operator_list_out():
 def test_operator_multi_out():
     @operator
     class op:
-        ain = {'x' : '*'}
+        ain = 'x'
         # for python 2.x need to use this syntax
         # to preserve orders
-        aout = [('y1', '*'),
-                ('y2', '*')]
+        aout = 'y1', 'y2'
 
         def apl(self, x):
             return dict(y1=x, y2=2 * x)
@@ -271,11 +293,10 @@ def test_operator_multi_out():
 def test_operator_multi_out_unused():
     @operator
     class op:
-        ain = {'x' : '*'}
+        ain = 'x'
         # for python 2.x need to use this syntax
         # to preserve orders
-        aout = [('y1', '*'),
-                ('y2', '*')]
+        aout = 'y1', 'y2'
 
         def apl(self, x):
             return dict(y1=x, y2=2 * x)
@@ -308,8 +329,8 @@ def test_operator_record():
     # assert used extra args are recored on the tape
     @operator
     class myrecord:
-        ain = {'x' : '*'}
-        aout = {'y' : '*'}
+        ain = 'x'
+        aout = 'y'
 
         def apl(self, x, p):
             return x * p
@@ -339,8 +360,8 @@ def test_operator_record_extra():
     # assert used extra args are recored on the tape
     @operator
     class myrecord:
-        ain = {'x' : '*'}
-        aout = {'y' : '*'}
+        ain = 'x'
+        aout = 'y'
 
         def apl(self, x, p):
             return dict(y=x * p, extra=p)

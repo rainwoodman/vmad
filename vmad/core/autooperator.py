@@ -1,4 +1,4 @@
-from .operator import _make_primitive, Operator, unbound
+from .operator import _make_primitive, Operator, unbound, _to_ordereddict
 from .model import Builder
 from .context import Context
 from .error import ModelError
@@ -29,8 +29,8 @@ def autooperator(kls):
     argnames_vjp.append('##tape')
     argnames_jvp.append('##tape')
 
-    kls.ain = OrderedDict(kls.ain)
-    kls.aout = OrderedDict(kls.aout)
+    kls.ain = _to_ordereddict(kls.ain)
+    kls.aout = _to_ordereddict(kls.aout)
     kls.argnames = argnames
 
     # add v arguments
