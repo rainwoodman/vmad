@@ -214,6 +214,7 @@ def test_operator_list_out():
 
         t = split(x=a, axis=0, args=l)
         assert isinstance(next(iter(t)), List)
+        assert next(iter(t)) is l
         m.output(c=t)
 
     init = dict(a=[[1, 1], [2, 2]])

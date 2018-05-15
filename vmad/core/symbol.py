@@ -75,6 +75,16 @@ class List(Symbol):
     def resolve(self, context):
         return [v.resolve(context) for v in self.value]
 
+    def __len__(self):
+        return len(self.value)
+
+    def __getitem__(self, i):
+        return self.value[i]
+
+    def __iter__(self):
+        for v in self.value:
+            yield v
+
     def store(self, context, value):
         for var, v in zip(self.value, value):
             var.store(context, v)

@@ -47,10 +47,6 @@ class BaseScalarTest:
         y, tape = self.m.compute(init=dict(x=self.x), vout='y', return_tape=True)
         self.tape = tape
         self.y_ = y_
-        import numpy
-
-        if numpy.allclose(y_, 0):
-            raise AssertionError("The test case is not powerful enough, since all derivatives at this point are zeros")
 
     def test_opr(self):
         init = dict(x=self.x)
@@ -59,6 +55,12 @@ class BaseScalarTest:
         if self.y is not NotImplemented:
             # correctness
             assert_allclose(y1, self.y)
+
+    def test_powerfulness(self):
+        import numpy
+
+        if numpy.allclose(self.y_, 0):
+            raise AssertionError("The test case is not powerful enough, since all derivatives at this point are zeros")
 
     def test_jvp_finite(self):
         jvp = self.tape.get_jvp()
@@ -70,7 +72,6 @@ class BaseScalarTest:
             assert_allclose(y_1, y_)
 
     def test_vjp_finite(self):
-        import numpy
         vjp = self.tape.get_vjp()
 
         init = dict(_y=1.0)
