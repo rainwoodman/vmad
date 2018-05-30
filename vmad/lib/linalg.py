@@ -29,6 +29,24 @@ class mul:
         return dict(y_ = x1_* x2 + x1 * x2_)
 
 @operator
+class matmul:
+    ain = {'x':'*'}
+    aout = {'C':'*'}
+
+    def apl(self, x, A):
+        C=numpy.einsum('ik,ijk->ij',x,A) 
+        return dict(C=C)
+
+    def vjp(self, _C,A):
+        _x=numpy.einsum('ijk,ij->ik',A,_C)
+        return dict(_x=_x)
+    
+    def jvp(self, x_,A):
+        C_=numpy.einsum('ik,ijk->ij',x_,A)
+        return dict(C_=C_)
+
+
+@operator
 class unpack_complex:
     ain = {'x' : '*'}
     aout = [('real', '*'), ('imag', '*')]
@@ -168,6 +186,8 @@ class take:
     aout = {'y' : 'ndarray'}
 
     def apl(self, x, i, axis):
+        if axis is None:
+            raise AssertionError('Assertion error. axis keyword in linalg.take cannot be None.')
         return dict(y=numpy.take(x, i, axis=axis))
 
     def rcd(self, x, i, axis, y):
