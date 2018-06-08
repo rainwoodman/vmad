@@ -20,9 +20,14 @@ def print(*args, **kwargs):
 powerspectrum = LinearPower(Planck15, 0)
 noise_powerspectrum = lambda k: 1.
 
+# n is a RealField
+# N is covariance, diagonal thus just a RealField
 n = cosmo4d.convolve(noise_powerspectrum, pm.generate_whitenoise(333, unitary=True, type='real'))
 N = cosmo4d.convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
-s_truth = cosmo4d.convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True))
+
+# t is a ComplexField
+# S is covariance, diagonal thus just a ComplexField
+t = cosmo4d.convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True, type='complex'))
 S = cosmo4d.convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
 S[S == 0] = 1.0
 
@@ -39,7 +44,7 @@ ForwardModelHyperParameters = dict(
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=s_truth))
+fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
 
 def save_truth(filename, fs, s, n):
     from nbodykit.lab import FieldMesh
@@ -80,18 +85,14 @@ def monitor(state):
     print(state)
 
 lbfgs = LBFGS(maxiter=30)
-print('objective(truth) =', problem.f(s_truth), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
-print('objective(truth) =', problem.f(s_truth * 0.001), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(truth) =', problem.f(t), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(truth) =', problem.f(t* 0.001), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
 
-print('gradient = ', problem.g(s_truth))
+#print('gradient = ', problem.g(t))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
 
-"""
-x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
-x1 = trcg.minimize(problem, x1['x'], monitor=print)
-"""
-#x1 = lbfgs.minimize(problem, s_truth * 0.001, monitor=monitor)
+#x1 = lbfgs.minimize(problem, t* 0.001, monitor=monitor)
 
-x1 = trcg.minimize(problem, s_truth * 0.001, monitor=monitor)
+x1 = trcg.minimize(problem, t* 0.001, monitor=monitor)
 
