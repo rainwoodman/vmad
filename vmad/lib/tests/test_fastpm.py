@@ -1,6 +1,7 @@
 from __future__ import print_function
 from pprint import pprint
 from vmad.lib import fastpm, linalg
+from vmad.core.symbol import Literal
 import numpy
 
 from vmad.testing import BaseScalarTest
@@ -60,6 +61,24 @@ class Test_r2c_transfer_c2r(BaseScalarTest):
         c = fastpm.apply_transfer(c, tf=transfer)
         r = fastpm.c2r(c)
         return r
+
+#    def teardown(self):
+#        print(self.y_)
+
+class Test_cdot(BaseScalarTest):
+    to_scalar = linalg.to_scalar
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
+
+    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x1 = pm.generate_whitenoise(seed=301, unitary=True, mode='real')
+    y = (x.cdot(x1)) ** 2 * pm.Nmesh.prod() ** -2.
+    x_ = create_bases(x)
+
+    def model(self, x):
+        x1 = fastpm.r2c(Literal(x.model, self.x1))
+        x = fastpm.r2c(x)
+        return fastpm.cdot(x, x1)
 
 #    def teardown(self):
 #        print(self.y_)

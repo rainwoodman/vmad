@@ -438,3 +438,21 @@ class nbody:
         dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
 
         return dict(dx=dx, p=p, f=f)
+
+@operator
+class cdot:
+    ain = {'x1' : 'ComplexField', 'x2' : 'Complexfield'}
+    aout = {'y' : '*'}
+
+    # only keep the real part, assuming two fields are hermitian.
+    def apl(self, x1, x2):
+        return dict(y=x1.cdot(x2).real)
+
+    def vjp(self, x1, x2, _y):
+        _x1 = x2.cdot_vjp(_y)
+        _x2 = x1.cdot_vjp(_y)
+        return dict(_x1=_x1, _x2=_x2)
+
+    def jvp(self, x1_, x2_, x1, x2):
+        return dict(y_=x1.cdot(x2_).real + x2.cdot(x1_).real)
+
