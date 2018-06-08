@@ -108,3 +108,11 @@ class ChiSquareProblem(MPIChiSquareProblem):
         s.save(filename, dataset='s', mode='real', )
         fs.save(filename, dataset='fs', mode='real')
 
+def convolve(power_spectrum, field):
+    """ Convolve a field with a power spectrum.
+        Preserve the type of the output field.
+    """
+    c = field.cast(type='complex')
+    c = c.apply(lambda k, v: (power_spectrum(k.normp() ** 0.5) / c.pm.BoxSize.prod()) ** 0.5 * v)
+    return c.cast(type=type(field))
+

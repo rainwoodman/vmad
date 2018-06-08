@@ -1,42 +1,34 @@
 from vmad import Builder, autooperator
 from vmad.lib import fastpm, mpi, linalg
 from vmad.contrib import cosmo4d
-
 from abopt.trustregion import TrustRegionCG
+from abopt.lbfgs import LBFGS
 
 import numpy
 
-from abopt.lbfgs import LBFGS
-
-from abopt.abopt2 import real_vector_space, Problem, VectorSpace
-
 from nbodykit.cosmology import Planck15, LinearPower
-
-oldprint = print
 
 pm = cosmo4d.ParticleMesh([4, 4, 4], BoxSize=300.)
 
-def print(*args):
-    if pm.comm.rank == 0:
-        oldprint(*args)
+def print(*args, **kwargs):
+    comm = pm.comm
+    from builtins import print
+    if comm.rank == 0:
+        print(*args, **kwargs)
 
-def convolve(power_spectrum, field):
-    c = field.cast(type='complex')
-    c = c.apply(lambda k, v: (power_spectrum(k.normp() ** 0.5) / c.pm.BoxSize.prod()) ** 0.5 * v)
-    return c.cast(type=type(field))
 
 powerspectrum = LinearPower(Planck15, 0)
 noise_powerspectrum = lambda k: 1.
 
-n = convolve(noise_powerspectrum, pm.generate_whitenoise(333, unitary=True, type='real'))
-N = convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
-S = convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
+n = cosmo4d.convolve(noise_powerspectrum, pm.generate_whitenoise(333, unitary=True, type='real'))
+N = cosmo4d.convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
+s_truth = cosmo4d.convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True))
+S = cosmo4d.convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
 S[S == 0] = 1.0
 
 print(numpy.var(n), N.cmean(), N[0, 0, 0], noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod())
 print(S[0, 0, 1])
 
-s_truth = convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True))
 
 ForwardModelHyperParameters = dict(
             q = pm.generate_uniform_particle_grid(),
@@ -72,12 +64,15 @@ problem = cosmo4d.ChiSquareProblem(pm.comm,
         ]
         )
 
-problem.maxradius = 100
-problem.initradus = 1
-problem.atol = 0.1
-problem.cg_rtol = 0.1
-problem.cg_maxiter= 10
-trcg = TrustRegionCG()
+trcg = TrustRegionCG(
+    maxradius = 10000,
+    minradius = 1e-4,
+    initradus = 1,
+    atol = 0.1,
+    cg_rtol = 0.1,
+    cg_maxiter= 10,
+)
+
 trcg.cg_monitor = print
 
 def monitor(state):
