@@ -16,6 +16,21 @@ class MPIChiSquareOperator:
 
 from abopt.abopt2 import Problem as BaseProblem, VectorSpace
 
+class MPIVectorSpace(VectorSpace):
+    def __init__(self, comm):
+        self.comm = comm
+
+    def addmul(self, a, b, c, p=1):
+        """ a + b * c ** p, follow the type of b """
+        if p is not 1: c = c ** p
+        c = b * c
+        if a is not 0: c = c + a
+        return c
+
+    def dot(self, a, b):
+        """ einsum('i,i->', a, b) """
+        return self.comm.allreduce(numpy.sum(a * b))
+
 class MPIChiSquareProblem(BaseProblem):
     """ Defines a chisquare problem, which is
 
@@ -31,10 +46,13 @@ class MPIChiSquareProblem(BaseProblem):
         with forward_operator and residuals. (usually just pm.comm or MPI.COMM.WORLD)
 
     """
-    def __init__(self, comm, forward_operator, residuals):
+    def __init__(self, comm, forward_operator, residuals, vectorspace=None):
         self.residuals = residuals
         self.forward_operator = forward_operator
         self.comm = comm
+
+        if vectorspace is None:
+            vectorspace = MPIVectorSpace(comm)
 
         with Builder() as m:
             x = m.input('x')
@@ -74,20 +92,8 @@ class MPIChiSquareProblem(BaseProblem):
             # H is 2 JtJ, see wikipedia on Gauss Newton.
             return Dv * 2
 
-        def addmul(a, b, c, p=1):
-            """ a + b * c ** p, follow the type of b """
-            if p is not 1: c = c ** p
-            c = b * c
-            if a is not 0: c = c + a
-            return c
-
-        def dot(a, b):
-            """ einsum('i,i->', a, b) """
-            return self.comm.allreduce(numpy.sum(a * b))
-
-        vs = VectorSpace(addmul=addmul, dot=dot)
         BaseProblem.__init__(self,
-                        vs = vs,
+                        vs = vectorspace,
                         objective=objective,
                         gradient=gradient,
                         hessian_vector_product=hessian_vector_product)

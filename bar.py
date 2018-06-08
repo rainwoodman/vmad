@@ -14,24 +14,29 @@ from nbodykit.cosmology import Planck15, LinearPower
 
 oldprint = print
 
-pm = cosmo4d.ParticleMesh([4, 4, 4], BoxSize=400.)
+pm = cosmo4d.ParticleMesh([4, 4, 4], BoxSize=300.)
 
 def print(*args):
     if pm.comm.rank == 0:
         oldprint(*args)
 
+def convolve(power_spectrum, field):
+    c = field.cast(type='complex')
+    c = c.apply(lambda k, v: (power_spectrum(k.normp() ** 0.5) / c.pm.BoxSize.prod()) ** 0.5 * v)
+    return c.cast(type=type(field))
+
 powerspectrum = LinearPower(Planck15, 0)
-noise_powerspectrum = lambda k: 100.
+noise_powerspectrum = lambda k: 1.
 
-n = pm.generate_whitenoise(333, unitary=True).apply(
-        lambda k, v: v * (noise_powerspectrum(k) / pm.BoxSize.prod()) ** 0.5).c2r()
+n = convolve(noise_powerspectrum, pm.generate_whitenoise(333, unitary=True, type='real'))
+N = convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
+S = convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
+S[S == 0] = 1.0
 
-noise_variance = noise_powerspectrum(0.) / (pm.BoxSize / pm.Nmesh).prod()
+print(numpy.var(n), N.cmean(), N[0, 0, 0], noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod())
+print(S[0, 0, 1])
 
-wn = pm.generate_whitenoise(555, unitary=True)
-
-x = wn[...]
-x = numpy.stack([x.real, x.imag], -1)
+s_truth = convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True))
 
 ForwardModelHyperParameters = dict(
             q = pm.generate_uniform_particle_grid(),
@@ -42,32 +47,28 @@ ForwardModelHyperParameters = dict(
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-fs, wn, s = ForwardOperator.build().compute(('fs', 'wn', 's'), init=dict(x=x))
+fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=s_truth))
 
-def save_truth(filename, fs, wn, s, n):
+def save_truth(filename, fs, s, n):
     from nbodykit.lab import FieldMesh
 
-
-    print('<fs>, <wn>, <s>', fs.cmean(), wn.cmean(), s.c2r().cmean())
+    print('<fs>, <s>', fs.cmean(), s.c2r().cmean())
 
     d = FieldMesh(fs + n)
-    wn = FieldMesh(wn)
     fs = FieldMesh(fs)
     s = FieldMesh(s)
 
-    wn.save(filename, dataset='wn', mode='real')
     s.save(filename, dataset='s', mode='real')
     fs.save(filename, dataset='fs', mode='real')
     d.save(filename, dataset='d', mode='real')
 
-save_truth('/tmp/bar-truth', fs=fs, wn=wn, s=s, n=n)
+save_truth('/tmp/bar-truth', fs=fs, s=s, n=n)
 
 problem = cosmo4d.ChiSquareProblem(pm.comm,
         ForwardOperator,
         [
-            cosmo4d.PriorOperator,
-#            cosmo4d.LNResidualOperator.bind(d=wn, invvar=0),
-            cosmo4d.NLResidualOperator.bind(d=fs + n, invvar=noise_variance ** -1),
+            cosmo4d.PriorOperator.bind(invS=S ** -1),
+            cosmo4d.NLResidualOperator.bind(d=fs + n, invN=N ** -1),
         ]
         )
 
@@ -84,9 +85,10 @@ def monitor(state):
     print(state)
 
 lbfgs = LBFGS(maxiter=30)
-print('objective(truth) =', problem.f(x), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(truth) =', problem.f(s_truth), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(truth) =', problem.f(s_truth * 0.001), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
 
-#print('gradient = ', problem.g(x))
+print('gradient = ', problem.g(s_truth))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
 
@@ -94,7 +96,7 @@ print('objective(truth) =', problem.f(x), 'expecting', pm.Nmesh.prod() * len(pro
 x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
 x1 = trcg.minimize(problem, x1['x'], monitor=print)
 """
-#x1 = lbfgs.minimize(problem, x * 0.001, monitor=print)
+#x1 = lbfgs.minimize(problem, s_truth * 0.001, monitor=monitor)
 
-x1 = trcg.minimize(problem, x * 0.001, monitor=monitor)
+x1 = trcg.minimize(problem, s_truth * 0.001, monitor=monitor)
 
