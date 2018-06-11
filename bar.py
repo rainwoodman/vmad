@@ -8,7 +8,7 @@ import numpy
 
 from nbodykit.cosmology import Planck15, LinearPower
 
-pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=16.)
+pm = cosmo4d.ParticleMesh([8, 8, 8], BoxSize=16.)
 
 def print(*args, **kwargs):
     comm = pm.comm
@@ -86,13 +86,17 @@ class MAPInversion(cosmo4d.MAPInversion):
                 self.ForwardOperator,
                 [
                     cosmo4d.PriorOperator.bind(invS=S ** -1),
-        #            cosmo4d.NLResidualOperator.bind(d=d, invN=N ** -1),
                     cosmo4d.SmoothedNLResidualOperator.bind(d=d, invN=N ** -1, scale=smoothing),
                 ]
                 )
 
         return problem
 
+    def schedule(self, S, N):
+        self.schedule_problem('S', S)
+        self.schedule_problem('N', N)
+        self.schedule_optimizer('maxiter', [1, 2, 3, 4])
+        self.schedule_problem('smoothing', [2, 1, 0, 0])
 
 mapinv = MAPInversion(trcg, ForwardOperator)
 
@@ -102,14 +106,19 @@ problem = mapinv.problem_factory(S=sim_t.S, N=sim_t.N, d=sim_t.d, smoothing=0)
 print('objective(truth) =', problem.f(sim_t.s), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
 print('objective(0) =', problem.f(sim_t.s * 0.001))
 
-mapinv.schedule_optimizer('maxiter', [1, 2, 3, 4])
-mapinv.schedule_problem('smoothing', [2, 1, 0, 0])
-mapinv.schedule_problem('S', sim_t.S)
-mapinv.schedule_problem('N', sim_t.N)
 
-mapinv.apply(sim_t.d, epochs=[0, 1, 2, 3],
+mapinv.schedule(S=sim_t.S, N=sim_t.N)
+shat_t = mapinv.apply(sim_t.d, epochs=[0, 1, 2, 3],
             monitor_epoch=print,
             monitor_progress=monitor)
+
+sims = [None] * 8
+shats = [None] * 8
+for i in range(8):
+    sims[i] = cosmo4d.SynthData.create(ForwardOperator, i, Pss, Pnn)
+    shats[i] = mapinv.apply(sims[i].d, epochs=[0, 1, 2, 3],
+                monitor_epoch=print,
+                monitor_progress=monitor)
 
 
 #print('gradient = ', problem.g(t * 0.001))
