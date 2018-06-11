@@ -1,7 +1,7 @@
 from vmad import Builder, autooperator
 from vmad.lib import fastpm, mpi, linalg
 from pmesh.pm import ParticleMesh, Field
-from .chisquare import MPIChiSquareProblem, MPIVectorSpace
+from .chisquare import MPIChiSquareProblem, MPIVectorSpace, MAPInversion
 from abopt.abopt2 import Preconditioner
 
 import numpy

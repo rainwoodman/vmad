@@ -23,7 +23,6 @@ def pprint(*args, **kwargs):
         pprint(*args, **kwargs)
 
 
-
 Pss = LinearPower(Planck15, 0)
 Pnn = lambda k: 1.0
 
@@ -35,26 +34,23 @@ ForwardModelHyperParameters = dict(
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-def ProblemFactory(pm, ForwardOperator, S, N, d):
-    problem = cosmo4d.ChiSquareProblem(pm.comm,
-            ForwardOperator,
-            [
-                cosmo4d.PriorOperator.bind(invS=S ** -1),
-                cosmo4d.NLResidualOperator.bind(d=d, invN=N ** -1),
-    #            cosmo4d.SmoothedNLResidualOperator.bind(d=fs + n, invN=N ** -1, scale=4.0),
-            ]
-            )
-    return problem
+def monitor(state):
+    #problem.save('/tmp/bar-%04d' % state['nit'], state)
+    z = state.g
+    print(abs(z.c2r().r2c() - z)[...].max() / z.cnorm())
+    print(state)
+
 
 sim_t = cosmo4d.SynthData.create(ForwardOperator, 333, Pss, Pnn)
+
+for i in range(3):
+    sim_b = cosmo4d.SynthData.create(ForwardOperator, 333, Pss, Pnn)
 
 pprint(sim_t.attrs)
 
 sim_t.save('/tmp/bar-truth')
 
 sim_t = cosmo4d.SynthData.load('/tmp/bar-truth', pm.comm)
-
-problem = ProblemFactory(pm, ForwardOperator, sim_t.S, sim_t.N, sim_t.d)
 
 trcg = TrustRegionCG(
     maxradius = 100000,
@@ -67,14 +63,54 @@ trcg = TrustRegionCG(
 
 trcg.cg_monitor = print
 
-def monitor(state):
-    #problem.save('/tmp/bar-%04d' % state['nit'], state)
-    z = state.g
-    print(abs(z.c2r().r2c() - z)[...].max() / z.cnorm())
-    print(state)
+class MAPInversion(cosmo4d.MAPInversion):
+    def problem_factory(self, S, N, d, smoothing):
+        """ Create a problem object for a given set of args.
+
+            Parameters
+            ----------
+            S : ComplexField
+                prior power
+            N : RealField
+                noise variance
+
+            d : RealField
+                data
+
+            smoothing : float
+                subsampling fraction (length scale of a gaussian smoothing)
+        """
+        pm = self.ForwardOperator.hyperargs['pm']
+
+        problem = cosmo4d.ChiSquareProblem(pm.comm,
+                self.ForwardOperator,
+                [
+                    cosmo4d.PriorOperator.bind(invS=S ** -1),
+        #            cosmo4d.NLResidualOperator.bind(d=d, invN=N ** -1),
+                    cosmo4d.SmoothedNLResidualOperator.bind(d=d, invN=N ** -1, scale=smoothing),
+                ]
+                )
+
+        return problem
+
+
+mapinv = MAPInversion(trcg, ForwardOperator)
+
+# checking the problem
+problem = mapinv.problem_factory(S=sim_t.S, N=sim_t.N, d=sim_t.d, smoothing=0)
 
 print('objective(truth) =', problem.f(sim_t.s), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
 print('objective(0) =', problem.f(sim_t.s * 0.001))
+
+mapinv.schedule_optimizer('maxiter', [1, 2, 3, 4])
+mapinv.schedule_problem('smoothing', [2, 1, 0, 0])
+mapinv.schedule_problem('S', sim_t.S)
+mapinv.schedule_problem('N', sim_t.N)
+
+mapinv.apply(sim_t.d, epochs=[0, 1, 2, 3],
+            monitor_epoch=print,
+            monitor_progress=monitor)
+
 
 #print('gradient = ', problem.g(t * 0.001))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))

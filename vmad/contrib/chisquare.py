@@ -97,3 +97,102 @@ class MPIChiSquareProblem(BaseProblem):
                         objective=objective,
                         gradient=gradient,
                         hessian_vector_product=hessian_vector_product)
+
+class EpochScheduler(dict):
+    """ An object to schedule hyper parameters in multi-epoch
+        training.
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, argname, values):
+        self.schedule(argname, values)
+
+    def schedule(self, argname, values):
+        """ schedule a training parameter `argname`
+            at the given epochs.
+
+            values can be either a list or a dict, or a scalar.
+
+            list : one value per epoch
+            dict : step function per epoch, key is the epoch to change
+            scalar : at the 0th epoch.
+
+            The nameed optimizer parameter will be set to the
+            given value on that epoch as if all epochs are played
+            sequentially.
+        """
+        if isinstance(values, (list, tuple)):
+            iter = enumerate(values)
+        elif isinstance(values, (dict,)):
+            iter = values.items()
+        else:
+            # scalar
+            iter = enumerate([values])
+
+        for epoch, value in iter:
+            args = self.get(epoch, {})
+            args[argname] = value
+            self[epoch] = args
+
+    def get_args(self, epoch):
+        """ move the trainer to the epoch"""
+        args = {}
+        for epochi in sorted(self.keys()):
+            if epochi <= epoch:
+                for argname, value in self[epochi].items():
+                    args[argname] = value
+
+        return args
+
+class MAPInversion:
+    """ Inversion of a ChiSquareProblem with a ForwardOperator;
+        given data finding the optimal reconstruction.
+
+        The inversion is done in multiple epochs to accelerate
+        convergence and avoid local attractors. Conceptually this
+        is similar to stochastic gradient descent.
+
+        Two schedulers are involved. schedule_optimizer controls
+        the parameters of the trainer (e.g., maxiter, atol, rtol, etc).
+        schedule_problem controls the parameters of the problem
+        (subsampling, changing prior, etc).
+    """
+
+    def __init__(self, optimizer, ForwardOperator):
+        self.optimizer = optimizer
+        self.ForwardOperator = ForwardOperator
+        self.schedule_optimizer = EpochScheduler()
+        self.schedule_problem = EpochScheduler()
+
+    def apply(self, d, epochs=[0], monitor_epoch=None, monitor_progress=None):
+        """ Apply MAP inversion on synthetic data.
+
+            returns the MAP estimation of the signal.
+
+            epochs : a list of epochs to run.
+        """
+        s1 = d.r2c() * 1e-5
+        for epoch in epochs:
+            if monitor_epoch:
+                monitor_epoch('=== running epoch ', epoch)
+
+            # if you see exception here, see add a schedule_problem for the arg.
+            problem = self.problem_factory(d=d, **self.schedule_problem.get_args(epoch))
+
+            self.optimizer.__dict__.update(self.schedule_optimizer.get_args(epoch))
+            state = self.optimizer.minimize(problem, s1, monitor=monitor_progress)
+            s1 = state['x']
+        return s1
+
+    def problem_factory(self, **args):
+        """ Create a problem object.
+
+            override in subclasses.
+
+            args are set by
+
+            >> mapinversion.schedule_problem(argname, argvalue)
+        """
+        pass
+
