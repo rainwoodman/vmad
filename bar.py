@@ -8,7 +8,7 @@ import numpy
 
 from nbodykit.cosmology import Planck15, LinearPower
 
-pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=32.)
+pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=16.)
 
 def print(*args, **kwargs):
     comm = pm.comm
@@ -30,13 +30,21 @@ ForwardModelHyperParameters = dict(
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
 class SynData:
-    def __init__(self, S, s, N, n, fs, d):
+    """ This object represents a synthetic data.
+
+        A synthetic data is draw with a random seed
+        from 
+    """
+    def __init__(self, S, s, N, n, fs, d, attrs={}):
         self.s = s
         self.fs = fs
         self.d = d
         self.n = n
         self.S = S
         self.N = N
+
+        self.attrs = {}
+        self.attrs.update(attrs)
 
     @classmethod
     def create(kls, ForwardOperator, seed, Pss, Pnn):
@@ -65,11 +73,39 @@ class SynData:
 
         fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
 
-        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n)
+        attrs = {}
+        attrs['noiseseed'] = noiseseed
+        attrs['signalseed'] = signalseed
+        attrs['noisevariance'] = (n ** 2).cmean()
+        attrs['fsvariance'] = ((fs - 1)**2).cmean()
+
+        print(attrs)
+        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
+
+    @classmethod
+    def load(kls, filename, comm):
+        from nbodykit.lab import BigFileMesh
+        from bigfile import File
+
+        d = BigFileMesh(filename, dataset='d', comm=comm).compute(mode='real')
+        fs = BigFileMesh(filename, dataset='fs', comm=comm).compute(mode='real')
+        s = BigFileMesh(filename, dataset='s', comm=comm).compute(mode='complex')
+        n = BigFileMesh(filename, dataset='n', comm=comm).compute(mode='real')
+        N = BigFileMesh(filename, dataset='N', comm=comm).compute(mode='real')
+        S = BigFileMesh(filename, dataset='S', comm=comm).compute(mode='complex')
+
+        attrs = {}
+        with File(filename) as bf:
+            with bf['Header'] as bb:
+                for key in bb.attrs:
+                    attrs[key] = bb.attrs[key]
+
+        print(attrs)
+        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
 
     def save(self, filename):
         from nbodykit.lab import FieldMesh
-
+        from bigfile import File
         print('<fs>, <s>', self.fs.cmean(), self.s.c2r().cmean())
 
         d = FieldMesh(self.d)
@@ -79,13 +115,17 @@ class SynData:
         N = FieldMesh(self.N)
         S = FieldMesh(self.S)
 
-        s.save(filename, dataset='s', mode='real')
-        S.save(filename, dataset='S', mode='real')
+        s.save(filename, dataset='s', mode='complex')
+        S.save(filename, dataset='S', mode='complex')
         n.save(filename, dataset='n', mode='real')
         N.save(filename, dataset='N', mode='real')
         fs.save(filename, dataset='fs', mode='real')
         d.save(filename, dataset='d', mode='real')
 
+        with File(filename) as bf:
+            with bf.create("Header") as bb:
+                for key in self.attrs:
+                    bb.attrs[key] = self.attrs[key]
 
 def ProblemFactory(pm, ForwardOperator, S, N, d):
     problem = cosmo4d.ChiSquareProblem(pm.comm,
@@ -101,6 +141,8 @@ def ProblemFactory(pm, ForwardOperator, S, N, d):
 sim_t = SynData.create(ForwardOperator, 333, Pss, Pnn)
 
 sim_t.save('/tmp/bar-truth')
+
+sim_t = SynData.load('/tmp/bar-truth', pm.comm)
 
 problem = ProblemFactory(pm, ForwardOperator, sim_t.S, sim_t.N, sim_t.d)
 
