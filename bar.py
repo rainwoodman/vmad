@@ -29,7 +29,7 @@ ForwardModelHyperParameters = dict(
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-class SynData:
+class SynthData:
     """ This object represents a synthetic data.
 
         A synthetic data is draw with a random seed
@@ -138,11 +138,11 @@ def ProblemFactory(pm, ForwardOperator, S, N, d):
             )
     return problem
 
-sim_t = SynData.create(ForwardOperator, 333, Pss, Pnn)
+sim_t = SynthData.create(ForwardOperator, 333, Pss, Pnn)
 
 sim_t.save('/tmp/bar-truth')
 
-sim_t = SynData.load('/tmp/bar-truth', pm.comm)
+sim_t = SynthData.load('/tmp/bar-truth', pm.comm)
 
 problem = ProblemFactory(pm, ForwardOperator, sim_t.S, sim_t.N, sim_t.d)
 
