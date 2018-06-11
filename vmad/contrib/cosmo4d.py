@@ -2,6 +2,8 @@ from vmad import Builder, autooperator
 from vmad.lib import fastpm, mpi, linalg
 from pmesh.pm import ParticleMesh, Field
 from .chisquare import MPIChiSquareProblem, MPIVectorSpace
+from abopt.abopt2 import Preconditioner
+
 import numpy
 
 @autooperator
@@ -9,7 +11,7 @@ class FastPMOperator:
     ain = [('x', '*')]
     aout = [('s', '*'), ('fs', '*')]
 
-    def main(self, x, q, stages, cosmology, powerspectrum, pm):
+    def main(self, x, q, stages, cosmology, pm):
         rholnk = x
 
         if len(stages) == 0:
@@ -85,7 +87,21 @@ class ChiSquareProblem(MPIChiSquareProblem):
     def __init__(self, comm, forward_operator, residuals):
         vs = FastPMVectorSpace(comm)
         MPIChiSquareProblem.__init__(self, comm, forward_operator, residuals, vs)
+        self.set_preconditioner('complex')
 
+    def set_preconditioner(self, precond):
+        ComplexOptimizer = Preconditioner(lambda x, direction:x, lambda x, direction:x)
+        RealOptimizer = Preconditioner(
+            Pvp=lambda x, direction:
+                x.c2r() / x.Nmesh.prod() if direction > 0 else x.c2r(),
+            vPp=lambda x, direction:
+                x.r2c() if direction > 0 else x.r2c() * x.Nmesh.prod()
+        )
+
+        if precond == 'real':
+            self._precond = RealOptimizer
+        else:
+            self._precond = ComplexOptimizer
     def save(self, filename, state):
         with Builder() as m:
             s = m.input('s')
