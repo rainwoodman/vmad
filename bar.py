@@ -16,6 +16,12 @@ def print(*args, **kwargs):
     if comm.rank == 0:
         print(*args, **kwargs)
 
+def pprint(*args, **kwargs):
+    comm = pm.comm
+    from pprint import pprint
+    if comm.rank == 0:
+        pprint(*args, **kwargs)
+
 
 
 Pss = LinearPower(Planck15, 0)
@@ -68,18 +74,15 @@ class SynthData:
         S = cosmo4d.convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
         S[S == 0] = 1.0
 
-        print(numpy.var(n), N.cmean(), N[0, 0, 0], noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod())
-        print(S[0, 0, 1])
-
         fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
 
         attrs = {}
         attrs['noiseseed'] = noiseseed
         attrs['signalseed'] = signalseed
         attrs['noisevariance'] = (n ** 2).cmean()
+        attrs['expected_noisevariance'] = noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod()
         attrs['fsvariance'] = ((fs - 1)**2).cmean()
 
-        print(attrs)
         return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
 
     @classmethod
@@ -100,13 +103,11 @@ class SynthData:
                 for key in bb.attrs:
                     attrs[key] = bb.attrs[key]
 
-        print(attrs)
         return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
 
     def save(self, filename):
         from nbodykit.lab import FieldMesh
         from bigfile import File
-        print('<fs>, <s>', self.fs.cmean(), self.s.c2r().cmean())
 
         d = FieldMesh(self.d)
         fs = FieldMesh(self.fs)
@@ -139,6 +140,8 @@ def ProblemFactory(pm, ForwardOperator, S, N, d):
     return problem
 
 sim_t = SynthData.create(ForwardOperator, 333, Pss, Pnn)
+
+pprint(sim_t.attrs)
 
 sim_t.save('/tmp/bar-truth')
 
