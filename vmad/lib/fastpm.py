@@ -84,26 +84,21 @@ class c2r:
         x_ = pm.create(mode='complex', value=x_)
         return dict(y_=x_.c2r())
 
-def nyquist_mask(v, i, Nmesh):
-    mask = ~numpy.bitwise_and.reduce([(ii == 0) | (ii == ni // 2) for ii, ni in zip(i, Nmesh)])
-    v.imag[...] *= mask
-    return v
-
 @operator
 class apply_transfer:
     ain = {'x' : 'ComplexField'}
     aout = {'y' : 'ComplexField'}
 
     def apl(self, x, tf):
-        filter = lambda k, v: nyquist_mask(v * tf(k), v.i, v.Nmesh)
+        filter = lambda k, v: v * tf(k)
         return dict(y=x.apply(filter))
 
     def vjp(self, _y, tf):
-        filter = lambda k, v: nyquist_mask(v * numpy.conj(tf(k)), v.i, v.Nmesh)
+        filter = lambda k, v: v * numpy.conj(tf(k))
         return dict(_x=_y.apply(filter))
 
     def jvp(self, x_, tf):
-        filter = lambda k, v: nyquist_mask(v * tf(k), v.i, v.Nmesh)
+        filter = lambda k, v: v * tf(k)
         return dict(y_=x_.apply(filter))
 
 @operator
@@ -207,13 +202,15 @@ class exchange:
     def jvp(engine, layout, layout_, x_,):
         return dict(y_=layout.exchange(x_))
 
-def fourier_space_neg_gradient(dir):
+def fourier_space_neg_gradient(dir, pm):
+    nyquist =  numpy.pi / pm.BoxSize[dir] * (pm.Nmesh[dir] - 0.01)
     def filter(k):
-        return - 1j * k[dir]
+        mask = abs(k[dir]) < nyquist
+        return - 1j * k[dir] * mask
     return filter
 
 def fourier_space_laplace(k):
-    k2 = sum(ki **2 for ki in k)
+    k2 = k.normp(2)
     bad = k2 == 0
     k2[bad] = 1
     k2 = - 1 / k2
@@ -238,7 +235,7 @@ class lpt1:
 
         r1 = []
         for d in range(pm.ndim):
-            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d))
+            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
             dx1_r = c2r(dx1_c)
             dx1 = readout(dx1_r, q, layout)
             r1.append(dx1)
@@ -267,8 +264,8 @@ class lpt2src:
 
         Pii = []
         for d in range(pm.ndim):
-            t = apply_transfer(potk, fourier_space_neg_gradient(d))
-            Pii1 = apply_transfer(t, fourier_space_neg_gradient(d))
+            t = apply_transfer(potk, fourier_space_neg_gradient(d, pm))
+            Pii1 = apply_transfer(t, fourier_space_neg_gradient(d, pm))
             Pii1 = c2r(Pii1)
             Pii.append(Pii1)
 
@@ -281,8 +278,8 @@ class lpt2src:
                 source = linalg.add(source, source1)
 
         for d in range(pm.ndim):
-            t = apply_transfer(potk, fourier_space_neg_gradient(D1[d]))
-            Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d]))
+            t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm))
+            Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm))
             Pij1 = c2r(Pij1)
             neg = linalg.mul(Pij1, -1)
             source1 = linalg.mul(Pij1, neg)
@@ -349,7 +346,7 @@ class gravity:
 
         r1 = []
         for d in range(pm.ndim):
-            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d))
+            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
             dx1_r = c2r(dx1_c)
             dx1l = readout(dx1_r, xl, None)
             dx1 = gather(dx1l, layout)
