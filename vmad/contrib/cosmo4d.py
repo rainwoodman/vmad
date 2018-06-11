@@ -132,3 +132,96 @@ def convolve(power_spectrum, field):
     c = c.apply(lambda k, v: (power_spectrum(k.normp() ** 0.5) / c.pm.BoxSize.prod()) ** 0.5 * v)
     return c.cast(type=type(field))
 
+class SynthData:
+    """ This object represents a synthetic data.
+
+        A synthetic data is draw with a random seed
+        from 
+    """
+    def __init__(self, S, s, N, n, fs, d, attrs={}):
+        self.s = s
+        self.fs = fs
+        self.d = d
+        self.n = n
+        self.S = S
+        self.N = N
+
+        self.attrs = {}
+        self.attrs.update(attrs)
+
+    @classmethod
+    def create(kls, ForwardOperator, seed, Pss, Pnn):
+        pm = ForwardOperator.hyperargs['pm']
+
+        rng = numpy.random.RandomState(seed)
+        noiseseed = rng.randint(0xffffff)
+        signalseed = rng.randint(0xffffff)
+
+        powerspectrum = lambda k: Pss(k)
+        noise_powerspectrum = lambda k: Pnn(k)
+
+        # n is a RealField
+        # N is covariance, diagonal thus just a RealField
+        n = convolve(noise_powerspectrum, pm.generate_whitenoise(noiseseed, unitary=True, type='real'))
+        N = convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
+
+        # t is a ComplexField
+        # S is covariance, diagonal thus just a ComplexField
+        t = convolve(powerspectrum, pm.generate_whitenoise(signalseed, unitary=True, type='complex'))
+        S = convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
+        S[S == 0] = 1.0
+
+        fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
+
+        attrs = {}
+        attrs['noiseseed'] = noiseseed
+        attrs['signalseed'] = signalseed
+        attrs['noisevariance'] = (n ** 2).cmean()
+        attrs['expected_noisevariance'] = noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod()
+        attrs['fsvariance'] = ((fs - 1)**2).cmean()
+
+        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
+
+    @classmethod
+    def load(kls, filename, comm):
+        from nbodykit.lab import BigFileMesh
+        from bigfile import File
+
+        d = BigFileMesh(filename, dataset='d', comm=comm).compute(mode='real')
+        fs = BigFileMesh(filename, dataset='fs', comm=comm).compute(mode='real')
+        s = BigFileMesh(filename, dataset='s', comm=comm).compute(mode='complex')
+        n = BigFileMesh(filename, dataset='n', comm=comm).compute(mode='real')
+        N = BigFileMesh(filename, dataset='N', comm=comm).compute(mode='real')
+        S = BigFileMesh(filename, dataset='S', comm=comm).compute(mode='complex')
+
+        attrs = {}
+        with File(filename) as bf:
+            with bf['Header'] as bb:
+                for key in bb.attrs:
+                    attrs[key] = bb.attrs[key]
+
+        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
+
+    def save(self, filename):
+        from nbodykit.lab import FieldMesh
+        from bigfile import File
+
+        d = FieldMesh(self.d)
+        fs = FieldMesh(self.fs)
+        s = FieldMesh(self.s)
+        n = FieldMesh(self.n)
+        N = FieldMesh(self.N)
+        S = FieldMesh(self.S)
+
+        s.save(filename, dataset='s', mode='complex')
+        S.save(filename, dataset='S', mode='complex')
+        n.save(filename, dataset='n', mode='real')
+        N.save(filename, dataset='N', mode='real')
+        fs.save(filename, dataset='fs', mode='real')
+        d.save(filename, dataset='d', mode='real')
+
+        with File(filename) as bf:
+            with bf.create("Header") as bb:
+                for key in self.attrs:
+                    bb.attrs[key] = self.attrs[key]
+
