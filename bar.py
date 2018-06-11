@@ -8,7 +8,7 @@ import numpy
 
 from nbodykit.cosmology import Planck15, LinearPower
 
-pm = cosmo4d.ParticleMesh([4, 4, 4], BoxSize=300.)
+pm = cosmo4d.ParticleMesh([32, 32, 32], BoxSize=32.)
 
 def print(*args, **kwargs):
     comm = pm.comm
@@ -17,61 +17,96 @@ def print(*args, **kwargs):
         print(*args, **kwargs)
 
 
-powerspectrum = LinearPower(Planck15, 0)
-noise_powerspectrum = lambda k: 1.
 
-# n is a RealField
-# N is covariance, diagonal thus just a RealField
-n = cosmo4d.convolve(noise_powerspectrum, pm.generate_whitenoise(333, unitary=True, type='real'))
-N = cosmo4d.convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
-
-# t is a ComplexField
-# S is covariance, diagonal thus just a ComplexField
-t = cosmo4d.convolve(powerspectrum, pm.generate_whitenoise(555, unitary=True, type='complex'))
-S = cosmo4d.convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
-S[S == 0] = 1.0
-
-print(numpy.var(n), N.cmean(), N[0, 0, 0], noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod())
-print(S[0, 0, 1])
-
+Pss = LinearPower(Planck15, 0)
+Pnn = lambda k: 1.0
 
 ForwardModelHyperParameters = dict(
             q = pm.generate_uniform_particle_grid(),
-            stages=[0.4, 0.6, 1.0],
+            stages=[1.0],
             cosmology=Planck15,
-            powerspectrum=powerspectrum,
             pm=pm)
 
 ForwardOperator = cosmo4d.FastPMOperator.bind(**ForwardModelHyperParameters)
 
-fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
+class SynData:
+    def __init__(self, S, s, N, n, fs, d):
+        self.s = s
+        self.fs = fs
+        self.d = d
+        self.n = n
+        self.S = S
+        self.N = N
 
-def save_truth(filename, fs, s, n):
-    from nbodykit.lab import FieldMesh
+    @classmethod
+    def create(kls, ForwardOperator, seed, Pss, Pnn):
+        pm = ForwardOperator.hyperargs['pm']
 
-    print('<fs>, <s>', fs.cmean(), s.c2r().cmean())
+        rng = numpy.random.RandomState(seed)
+        noiseseed = rng.randint(0xffffff)
+        signalseed = rng.randint(0xffffff)
 
-    d = FieldMesh(fs + n)
-    fs = FieldMesh(fs)
-    s = FieldMesh(s)
+        powerspectrum = lambda k: Pss(k)
+        noise_powerspectrum = lambda k: Pnn(k)
 
-    s.save(filename, dataset='s', mode='real')
-    fs.save(filename, dataset='fs', mode='real')
-    d.save(filename, dataset='d', mode='real')
+        # n is a RealField
+        # N is covariance, diagonal thus just a RealField
+        n = cosmo4d.convolve(noise_powerspectrum, pm.generate_whitenoise(noiseseed, unitary=True, type='real'))
+        N = cosmo4d.convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
 
-save_truth('/tmp/bar-truth', fs=fs, s=s, n=n)
+        # t is a ComplexField
+        # S is covariance, diagonal thus just a ComplexField
+        t = cosmo4d.convolve(powerspectrum, pm.generate_whitenoise(signalseed, unitary=True, type='complex'))
+        S = cosmo4d.convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
+        S[S == 0] = 1.0
 
-problem = cosmo4d.ChiSquareProblem(pm.comm,
-        ForwardOperator,
-        [
-            cosmo4d.PriorOperator.bind(invS=S ** -1),
-            cosmo4d.NLResidualOperator.bind(d=fs + n, invN=N ** -1),
-        ]
-        )
+        print(numpy.var(n), N.cmean(), N[0, 0, 0], noise_powerspectrum(0) / (pm.BoxSize / pm.Nmesh).prod())
+        print(S[0, 0, 1])
+
+        fs, s = ForwardOperator.build().compute(('fs', 's'), init=dict(x=t))
+
+        return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n)
+
+    def save(self, filename):
+        from nbodykit.lab import FieldMesh
+
+        print('<fs>, <s>', self.fs.cmean(), self.s.c2r().cmean())
+
+        d = FieldMesh(self.d)
+        fs = FieldMesh(self.fs)
+        s = FieldMesh(self.s)
+        n = FieldMesh(self.n)
+        N = FieldMesh(self.N)
+        S = FieldMesh(self.S)
+
+        s.save(filename, dataset='s', mode='real')
+        S.save(filename, dataset='S', mode='real')
+        n.save(filename, dataset='n', mode='real')
+        N.save(filename, dataset='N', mode='real')
+        fs.save(filename, dataset='fs', mode='real')
+        d.save(filename, dataset='d', mode='real')
+
+
+def ProblemFactory(pm, ForwardOperator, S, N, d):
+    problem = cosmo4d.ChiSquareProblem(pm.comm,
+            ForwardOperator,
+            [
+                cosmo4d.PriorOperator.bind(invS=S ** -1),
+                cosmo4d.NLResidualOperator.bind(d=d, invN=N ** -1),
+    #            cosmo4d.SmoothedNLResidualOperator.bind(d=fs + n, invN=N ** -1, scale=4.0),
+            ]
+            )
+    return problem
+
+sim_t = SynData.create(ForwardOperator, 333, Pss, Pnn)
+
+sim_t.save('/tmp/bar-truth')
+
+problem = ProblemFactory(pm, ForwardOperator, sim_t.S, sim_t.N, sim_t.d)
 
 trcg = TrustRegionCG(
-    maxradius = 10000,
-    minradius = 1e-4,
+    maxradius = 100000,
+    minradius = 1e-2,
     initradus = 1,
     atol = 0.1,
     cg_rtol = 0.1,
@@ -82,17 +117,22 @@ trcg.cg_monitor = print
 
 def monitor(state):
     #problem.save('/tmp/bar-%04d' % state['nit'], state)
+    z = state.g
+    print(abs(z.c2r().r2c() - z)[...].max() / z.cnorm())
     print(state)
 
-lbfgs = LBFGS(maxiter=30)
-print('objective(truth) =', problem.f(t), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
-print('objective(truth) =', problem.f(t* 0.001), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(truth) =', problem.f(sim_t.s), 'expecting', pm.Nmesh.prod() * len(problem.residuals))
+print('objective(0) =', problem.f(sim_t.s * 0.001))
 
-#print('gradient = ', problem.g(t))
+#print('gradient = ', problem.g(t * 0.001))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x))
 #print('hessian vector product = ', problem.hessian_vector_product(x, x).shape)
 
-#x1 = lbfgs.minimize(problem, t* 0.001, monitor=monitor)
-
-x1 = trcg.minimize(problem, t* 0.001, monitor=monitor)
+lbfgs = LBFGS(maxiter=3)
+problem.set_preconditioner('complex')
+s1 = sim_t.s * 0.001
+#state = lbfgs.minimize(problem, t* 0.001, monitor=monitor)
+#s1 = state['x']
+#problem.set_preconditioner('real')
+state = trcg.minimize(problem, s1, monitor=monitor)
 
