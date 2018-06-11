@@ -3,10 +3,11 @@ from pprint import pprint
 from vmad.lib import fastpm, linalg
 from vmad.core.symbol import Literal
 import numpy
+from vmad import autooperator
 
 from vmad.testing import BaseScalarTest
 from mpi4py import MPI
-
+from numpy.testing import assert_allclose
 from pmesh.pm import RealField, ComplexField
 
 def create_bases(x):
