@@ -84,24 +84,19 @@ class FastPMVectorSpace(MPIVectorSpace):
             return self.comm.allreduce(numpy.sum(a * b))
 
 class ChiSquareProblem(MPIChiSquareProblem):
+    ComplexOptimizer = Precondition(Pvp=lambda x, direction: x, vPp=lambda x, direction: x)
+
+    RealOptimizer = Preconditioner(
+        Pvp=lambda x, direction:
+            x.c2r() / x.Nmesh.prod() if direction > 0 else x.c2r(),
+        vPp=lambda x, direction:
+            x.r2c() if direction > 0 else x.r2c() * x.Nmesh.prod()
+    )
+
     def __init__(self, comm, forward_operator, residuals):
         vs = FastPMVectorSpace(comm)
         MPIChiSquareProblem.__init__(self, comm, forward_operator, residuals, vs)
-        self.set_preconditioner('complex')
 
-    def set_preconditioner(self, precond):
-        ComplexOptimizer = Preconditioner(lambda x, direction:x, lambda x, direction:x)
-        RealOptimizer = Preconditioner(
-            Pvp=lambda x, direction:
-                x.c2r() / x.Nmesh.prod() if direction > 0 else x.c2r(),
-            vPp=lambda x, direction:
-                x.r2c() if direction > 0 else x.r2c() * x.Nmesh.prod()
-        )
-
-        if precond == 'real':
-            self._precond = RealOptimizer
-        else:
-            self._precond = ComplexOptimizer
     def save(self, filename, state):
         with Builder() as m:
             s = m.input('s')
@@ -150,7 +145,7 @@ class SynthData:
         self.attrs.update(attrs)
 
     @classmethod
-    def create(kls, ForwardOperator, seed, Pss, Pnn):
+    def create(kls, ForwardOperator, seed, Pss, Pnn, unitary=False):
         pm = ForwardOperator.hyperargs['pm']
 
         rng = numpy.random.RandomState(seed)
@@ -161,13 +156,15 @@ class SynthData:
         noise_powerspectrum = lambda k: Pnn(k)
 
         # n is a RealField
-        # N is covariance, diagonal thus just a RealField
-        n = convolve(noise_powerspectrum, pm.generate_whitenoise(noiseseed, unitary=True, type='real'))
+        # N is noise-covariance, diagonal thus just a RealField.
+        n = convolve(noise_powerspectrum, pm.generate_whitenoise(noiseseed, unitary=unitary, type='real'))
+        # N is the same as the variance of n, due to the multiplication of Nmesh.
         N = convolve(noise_powerspectrum, pm.create(value=1, type='real')) ** 2 * pm.Nmesh.prod()
 
         # t is a ComplexField
         # S is covariance, diagonal thus just a ComplexField
-        t = convolve(powerspectrum, pm.generate_whitenoise(signalseed, unitary=True, type='complex'))
+        t = convolve(powerspectrum, pm.generate_whitenoise(signalseed, unitary=unitary, type='complex'))
+        # S the power of S ** 0.5 is the same as power spectrum
         S = convolve(powerspectrum, pm.create(type='complex', value=1)) ** 2
         S[S == 0] = 1.0
 
@@ -201,6 +198,19 @@ class SynthData:
                     attrs[key] = bb.attrs[key]
 
         return kls(S=S, s=s, fs=fs, d=fs+n, N=N, n=n, attrs=attrs)
+
+    @classmethod
+    def save_extra(kls, filename, dataset, field):
+        """ some extra data. """
+        from nbodykit.lab import FieldMesh
+        s = FieldMesh(field)
+        s.save(filename, dataset=dataset, mode='complex')
+
+    @classmethod
+    def load_extra(kls, filename, dataset, comm):
+        from nbodykit.lab import BigFileMesh
+        s = BigFileMesh(filename, dataset=dataset, comm=comm).compute(mode='complex')
+        return s
 
     def save(self, filename):
         from nbodykit.lab import FieldMesh
