@@ -183,22 +183,28 @@ class MAPInversion:
             if monitor_epoch:
                 monitor_epoch(Epoch(epoch))
 
-            # if you see exception here, see add a schedule_problem for the arg.
-            problem = self.problem_factory(d=d, **self.schedule_problem.get_args(epoch))
+            problem = self.get_problem(d, epoch)
 
             self.optimizer.__dict__.update(self.schedule_optimizer.get_args(epoch))
+
             state = self.optimizer.minimize(problem, s1, monitor=monitor_progress)
             s1 = state['x']
         return s1
 
-    def problem_factory(self, **args):
+    def get_problem(self, d, epoch=0):
+        """ Create a problem to be solved for the epoch """
+        # if you see exception here, see add a schedule_problem for the arg.
+        return self.problem_factory(d=d, **self.schedule_problem.get_args(epoch))
+
+    def problem_factory(self, d, **args):
         """ Create a problem object.
 
-            override in subclasses.
+            override this method in subclasses; must
+            accept at least the data to be inverted.
 
             args are set by
 
             >> mapinversion.schedule_problem(argname, argvalue)
         """
-        pass
+        raise NotImplementedError
 
