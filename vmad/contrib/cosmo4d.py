@@ -84,7 +84,7 @@ class FastPMVectorSpace(MPIVectorSpace):
             return self.comm.allreduce(numpy.sum(a * b))
 
 class ChiSquareProblem(MPIChiSquareProblem):
-    ComplexOptimizer = Precondition(Pvp=lambda x, direction: x, vPp=lambda x, direction: x)
+    ComplexOptimizer = Preconditioner(Pvp=lambda x, direction: x, vPp=lambda x, direction: x)
 
     RealOptimizer = Preconditioner(
         Pvp=lambda x, direction:
