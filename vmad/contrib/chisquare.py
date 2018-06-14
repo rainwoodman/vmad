@@ -145,6 +145,12 @@ class EpochScheduler(dict):
 
         return args
 
+class Epoch(object):
+    def __init__(self, epoch):
+        self.epoch = epoch
+    def __repr__(self):
+        return "Epoch %d" % self.epoch
+
 class MAPInversion:
     """ Inversion of a ChiSquareProblem with a ForwardOperator;
         given data finding the optimal reconstruction.
@@ -175,7 +181,7 @@ class MAPInversion:
         s1 = d.r2c() * 1e-5
         for epoch in epochs:
             if monitor_epoch:
-                monitor_epoch('=== running epoch ', epoch)
+                monitor_epoch(Epoch(epoch))
 
             # if you see exception here, see add a schedule_problem for the arg.
             problem = self.problem_factory(d=d, **self.schedule_problem.get_args(epoch))
