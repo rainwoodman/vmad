@@ -110,18 +110,13 @@ class paint:
            }
 
     def apl(self, x, mass, layout, pm):
-        N = pm.comm.allreduce(len(x))
         mesh = pm.paint(x, mass=mass, layout=layout, hold=False)
-        # 1 + delta
-        mesh[...] *= 1.0 * pm.Nmesh.prod() / N
         return dict(mesh=mesh)
 
     def vjp(self, _mesh, x, mass, layout, pm):
-        N = pm.comm.allreduce(len(x))
+        N = pm.comm.allreduce(layout.oldlength)
         _mesh = pm.create(mode='real', value=_mesh)
         _x, _mass = pm.paint_vjp(_mesh, x, layout=layout, mass=mass)
-        _x[...] *= 1.0 * pm.Nmesh.prod() / N
-        _mass[...] *= 1.0 * pm.Nmesh.prod() / N
         return dict(
             _layout = 0,
             _x=_x,
@@ -334,12 +329,17 @@ class gravity:
     aout = [ ('f', '*')]
 
     def main(self, dx, q, pm):
-
+        from vmad.lib.utils import watchpoint
         x = linalg.add(dx, q)
         layout = decompose(x, pm)
 
         xl = exchange(x, layout)
         rho = paint(xl, 1.0, None, pm)
+
+        # convert to 1 + delta
+        fac = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q))
+
+        rho = linalg.mul(rho, fac)
         rhok = r2c(rho)
 
         p = apply_transfer(rhok, fourier_space_laplace)
