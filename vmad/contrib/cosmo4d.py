@@ -22,7 +22,7 @@ class FastPMOperator:
             x = linalg.add(q, dx)
             layout = fastpm.decompose(x, pm)
             rho = fastpm.paint(x, mass=1, layout=layout, pm=pm)
-            rho = linalg.mul(rho, 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(x)))
+            rho = linalg.mul(rho, 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q)))
 
         return dict(fs=rho, s=rholnk)
 

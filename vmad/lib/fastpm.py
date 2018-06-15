@@ -114,7 +114,6 @@ class paint:
         return dict(mesh=mesh)
 
     def vjp(self, _mesh, x, mass, layout, pm):
-        N = pm.comm.allreduce(layout.oldlength)
         _mesh = pm.create(mode='real', value=_mesh)
         _x, _mass = pm.paint_vjp(_mesh, x, layout=layout, mass=mass)
         return dict(
