@@ -10,11 +10,14 @@ class Model(list):
         self._counter = 0
         self._vin = []
         self._vout = []
+
+        # symbols that are registered for autodiff
         self._syms = {}
 
-    def define(self, varname):
-        r = Symbol(self, varname)
-        self._syms[varname] = r
+    def register(self, r):
+        assert r.name is not None
+
+        self._syms[r.name] = r
         return r
 
     def get(self, varname):
@@ -24,7 +27,7 @@ class Model(list):
         return varname in self._syms
 
     def input(self, *args):
-        r = [self.define(a) for a in args]
+        r = [Symbol(self, a) for a in args]
         self._vin.extend(r)
         if len(args) == 1:
             r = r[0]
@@ -36,7 +39,7 @@ class Model(list):
                 if var.name == varname:
                     raise DuplicatedOutput("Variable %s is already marked as an output" % varname)
 
-            var = self.define(varname)
+            var = Symbol(self, varname)
             terminal(x=oldvar, y=var)
             self._vout.append(var)
 

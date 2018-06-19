@@ -79,7 +79,7 @@ class Primitive(object):
             if not argname in kwargs:
                 # if a name is not supplied, generate a name
                 varname = self.name + '-' + argname
-                var = model.define(varname)
+                var = Symbol(model, varname)
             else:
                 var = kwargs[argname]
                 var = make_symbol(model, kwargs[argname])
@@ -88,9 +88,6 @@ class Primitive(object):
                 # but this doesn't work for gradients / tape
                 # so we die here
                 _check_var_references(var)
-
-                # make a new symbol of the same name
-                # var = model.define(var.name)
 
             self.varout[argname] = var
 

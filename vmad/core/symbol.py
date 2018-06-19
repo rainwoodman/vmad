@@ -15,6 +15,8 @@ class Symbol(object):
 
         A symbol is bound to a model; this is useful
         for the operators to infer the model during model construction.
+
+        Only named symbols are registered for autodiff.
     """
     def __init__(self, model, name=None):
         from .model import Model
@@ -26,6 +28,9 @@ class Symbol(object):
         self._model = weakref.ref(model)
         self._parent = None
         self.name = name
+
+        if name is not None:
+            model.register(self)
 
         # a list of nodes that makes use of the symbol
         self.references = []

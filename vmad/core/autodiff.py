@@ -32,9 +32,9 @@ def create_output_vjp(ref, model):
         # largest reference_id, must be the
         # first time seeing the partial derivative
         # define the symbol for the full derivative
-        var_p = model.define(var.vjp_name)
+        var_p = Symbol(model, var.vjp_name)
     else:
-        var_p = model.define(var.vjp_name + '#%d' % ref.ref_id)
+        var_p = Symbol(model, var.vjp_name + '#%d' % ref.ref_id)
 
     return var_p
 
@@ -58,7 +58,7 @@ def connect_output_vjp(ref, model):
         var_p = model.get(var.vjp_name + '#%d' % ref.ref_id)
         # create a new symbol for the result, with the same name
         # because we intent to overwrite it.
-        var_f2 = model.define(var.vjp_name)
+        var_f2 = Symbol(model, var.vjp_name)
 
         add(x1=var_f, x2=var_p, y=var_f2)
 
@@ -69,7 +69,7 @@ def create_output_jvp(var, model):
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
-    return model.define(var.jvp_name)
+    return Symbol(model, var.jvp_name)
 
 def create_input_jvp(var, model):
     if isinstance(var, List):
