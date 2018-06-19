@@ -2,7 +2,8 @@ import weakref
 import inspect
 
 from .error import InferError, UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
-from .symbol import Symbol, Literal, List
+from .symbol import BaseSymbol, Symbol, Literal, List
+from .refcount import RefCounted
 
 def make_symbol(model, obj):
     """ Make a symbol out of an input Python object.
@@ -27,13 +28,13 @@ def make_symbol(model, obj):
 
     # still not a Symbol? Must be some raw python object
     # intended to be used as a Literal
-    if not isinstance(obj, Symbol):
+    if not isinstance(obj, BaseSymbol):
         obj = Literal(model, obj)
 
     return obj
 
 
-class Primitive(object):
+class Primitive(BaseSymbol, RefCounted):
     """ Primitives are building blocks of models.
 
         Instantiation of a primitive creates a node on a model.
@@ -64,13 +65,16 @@ class Primitive(object):
 
         model = _find_model(kls, kwargs)
 
-        self._name = model.unique_name(kls.__name__)
+        BaseSymbol.__init__(self, model)
+        RefCounted.__init__(self)
+
+        basename = model.unique_name(kls.__name__)
 
         for argname in kls.ain:
             var = make_symbol(model, kwargs[argname])
 
             # checking symbol references
-            #print(self._name, var.name, id(var), id(model.get(var.name)))
+            #print(basename, var.name, id(var), id(model.get(var.name)))
 
             ref = var.add_reference(self)
             self.varin[argname] = ref
@@ -78,7 +82,7 @@ class Primitive(object):
         for argname in kls.aout:
             if not argname in kwargs:
                 # if a name is not supplied, generate a name
-                varname = self.name + '-' + argname
+                varname = basename + '-' + argname
                 var = Symbol(model, varname)
             else:
                 var = kwargs[argname]
@@ -118,16 +122,11 @@ class Primitive(object):
                 a, b, c = split_three_way(x)
 
         """
-
         for argname in type(self).aout:
             yield self.varout[argname]
 
-    @property
-    def name(self):
-        return self._name
-
     def __repr__(self):
-        return "%s(%s=>%s) at %s:%d" % (self._name, self.varin, self.varout, self._frameinfo[0], self._frameinfo[1])
+        return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self.varout, self._frameinfo[0], self._frameinfo[1])
 
     def call(self, **kwargs):
         """ call the implementation function of the primitive;
@@ -180,7 +179,7 @@ def _infer_model(var):
     if isinstance(var, Primitive):
         var = next(iter(var.varout.values()))
 
-    if isinstance(var, Symbol):
+    if isinstance(var, BaseSymbol):
         model = var.model
         return model
 
@@ -204,7 +203,7 @@ def _check_var_references(var):
             _check_var_references(v)
         return
 
-    if len(var.references) != 0:
+    if var.has_reference():
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
 def _parse_args(kls, args, kwargs):

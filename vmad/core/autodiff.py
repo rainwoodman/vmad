@@ -28,7 +28,7 @@ def create_output_vjp(ref, model):
     if isinstance(var, Literal):
         return None
 
-    if ref.ref_id == len(var.references):
+    if ref.is_last_ref():
         # largest reference_id, must be the
         # first time seeing the partial derivative
         # define the symbol for the full derivative
@@ -53,7 +53,7 @@ def connect_output_vjp(ref, model):
             return
 
     # accummulate the partials
-    if ref.ref_id != len(var.references):
+    if not ref.is_last_ref():
         var_f = model.get(var.vjp_name)
         var_p = model.get(var.vjp_name + '#%d' % ref.ref_id)
         # create a new symbol for the result, with the same name

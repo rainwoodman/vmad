@@ -24,7 +24,7 @@ class Ref(object):
         self.ref_id = ref_id
 
     def __repr__(self):
-        return "&[%s:%d]" % (self.symbol.name, self.ref_id)
+        return "&[%s:%d]" % (self.symbol, self.ref_id)
 
     def is_last_ref(self):
         return self.ref_id == len(self.symbol._references)
@@ -33,12 +33,13 @@ class Ref(object):
         """ Returns a list of symbol names that are referenced by
             this object, recursively
         """
+        from .symbol import Symbol
         l = set([])
         symbol = self.symbol
         # recusrively get the name of the parents
         # to handle AttrSymbol and CallSymbol
         while hasattr(symbol, '_parent'):
-            if symbol.name is not None:
+            if isinstance(symbol, Symbol):
                 l = l.union([symbol.name])
             symbol = symbol._parent
         return l
