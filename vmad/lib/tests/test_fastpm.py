@@ -77,7 +77,7 @@ class Test_cdot(BaseScalarTest):
     x_ = create_bases(x)
 
     def model(self, x):
-        x1 = fastpm.r2c(Literal(x.model, self.x1))
+        x1 = fastpm.r2c(Literal(x._model, self.x1))
         x = fastpm.r2c(x)
         return fastpm.cdot(x, x1)
 

@@ -54,7 +54,7 @@ class Primitive(Symbol):
             # checking symbol references
             #print(basename, var.name, id(var), id(model.get(var.name)))
 
-            ref = var.add_reference(self)
+            ref = var._add_reference(self)
             self._varin[argname] = ref
 
         is_scalar_primitive = False
@@ -103,17 +103,6 @@ class Primitive(Symbol):
                 value = self
             d[key] = value
         return d
-
-    def find_model(self):
-        """ Infer the model from args fail if nothing is found """
-
-        # we do not save model directly to avoid circular references.
-
-        for k, var in self.varin.items():
-            return var.symbol.model
-
-        for k, var in self.varout.items():
-            return var.symbol.model
 
     def __iter__(self):
         """ for unpacking the varout during model construction, e.g.
@@ -191,7 +180,7 @@ def _check_var_references(var):
             _check_var_references(v)
         return
 
-    if var.has_reference():
+    if var._has_reference():
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
 def _parse_args(kls, args, kwargs):
@@ -234,7 +223,7 @@ def _find_model(kls, kwargs):
 
 def _infer_model(var):
     if isinstance(var, BaseSymbol):
-        model = var.model
+        model = var._model
         return model
 
     if isinstance(var, (list, tuple)):

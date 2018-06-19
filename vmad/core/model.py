@@ -15,9 +15,9 @@ class Model(list):
         self._syms = {}
 
     def register(self, r):
-        assert r.name is not None
+        assert r._name is not None
 
-        self._syms[r.name] = r
+        self._syms[r._name] = r
         return r
 
     def get(self, varname):
@@ -36,7 +36,7 @@ class Model(list):
     def output(self, **kwargs):
         for varname, oldvar in kwargs.items():
             for var in self._vout:
-                if var.name == varname:
+                if var._name == varname:
                     raise DuplicatedOutput("Variable %s is already marked as an output" % varname)
 
             var = Symbol(self, varname)

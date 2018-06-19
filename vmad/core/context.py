@@ -48,7 +48,7 @@ class Context(dict):
             return True
 
         for argname, var in node.varout.items():
-            if var.has_reference(): return True
+            if var._has_reference(): return True
 
         if len(node.varout) == 0:
             # special operators without any output always gets run.
@@ -60,7 +60,7 @@ class Context(dict):
             compute a model in the current context (self)
         """
 
-        _voutnames = set([var.name for var in model._vout])
+        _voutnames = set([var._name for var in model._vout])
 
         for varname in vout:
             if varname not in _voutnames:
@@ -74,7 +74,7 @@ class Context(dict):
 
             if isinstance(node, terminal._apl):
                 for argname, var in node.varout.items():
-                    r[var.name] = self[var.name]
+                    r[var._name] = self[var._name]
 
             self.remove_unused(model[i+1:])
 
@@ -94,7 +94,7 @@ class Context(dict):
         resolved = {}
         for argname, ref in node.varin.items():
             var = ref.symbol
-            resolved[argname] = var.resolve(self)
+            resolved[argname] = var._resolve(self)
 
         kwargs = {}
         kwargs.update(resolved)
@@ -116,5 +116,5 @@ class Context(dict):
         tape.append(node, node.record(kwargs, r))
 
         for argname, var in node.varout.items():
-            var.store(self, r[argname])
+            var._store(self, r[argname])
 

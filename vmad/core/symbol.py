@@ -23,7 +23,7 @@ class BaseSymbol(object):
 
         assert isinstance(model, Model)
 
-        self._model = weakref.ref(model)
+        self._model_ref = weakref.ref(model)
 
         self._parent = None
 
@@ -31,23 +31,23 @@ class BaseSymbol(object):
         self._references = []
 
     @property
-    def model(self):
-        return self._model()
+    def _model(self):
+        return self._model_ref()
 
-    def resolve(self, context):
+    def _resolve(self, context):
         raise NotImplementedError
 
-    def store(self, context, value):
+    def _store(self, context, value):
         """ Storing the value of the variable to the context """
         # Not doing anything to the context by default
         pass
 
-    def add_reference(self, node):
+    def _add_reference(self, node):
         self._references.append(weakref.ref(self))
         ref_id = len(self._references)
         return Ref(self, node, ref_id)
 
-    def has_reference(self):
+    def _has_reference(self):
         return len(self._references) > 0
 
 
@@ -78,7 +78,7 @@ class Ref(object):
         # to handle AttrSymbol and CallSymbol
         while hasattr(symbol, '_parent'):
             if isinstance(symbol, Symbol):
-                l = l.union([symbol.name])
+                l = l.union([symbol._name])
             symbol = symbol._parent
         return l
 
@@ -88,30 +88,30 @@ class Symbol(BaseSymbol):
 
         BaseSymbol.__init__(self, model)
 
-        self.name = name
+        self._name = name
 
         model.register(self)
 
     def __getattr__(self, attrname):
         if attrname.startswith('_'):
             raise AttributeError
-        return AttrSymbol(self.model, self, attrname)
+        return AttrSymbol(self._model, self, attrname)
 
     @property
-    def vjp_name(self):
-        return '_' + self.name
+    def _vjp_name(self):
+        return '_' + self._name
 
     @property
-    def jvp_name(self):
-        return self.name + '_'
+    def _jvp_name(self):
+        return self._name + '_'
 
-    def resolve(self, context):
-        if self.name not in context:
-            raise ResolveError("Symbol %s does not exist in the context" % self.name)
-        return context[self.name]
+    def _resolve(self, context):
+        if self._name not in context:
+            raise ResolveError("Symbol %s does not exist in the context" % self._name)
+        return context[self._name]
 
-    def store(self, context, value):
-        context[self.name] = value
+    def _store(self, context, value):
+        context[self._name] = value
 
 class List(BaseSymbol):
     def __init__(self, model, value):
@@ -121,8 +121,8 @@ class List(BaseSymbol):
     def __repr__(self):
         return "L%s" % (str(self._items))
 
-    def resolve(self, context):
-        return [v.resolve(context) for v in self]
+    def _resolve(self, context):
+        return [v._resolve(context) for v in self]
 
     def __len__(self):
         return len(self._items)
@@ -138,19 +138,19 @@ class List(BaseSymbol):
         for v in reversed(self._items):
             yield v
 
-    def store(self, context, value):
+    def _store(self, context, value):
         for var, v in zip(self, value):
-            var.store(context, v)
+            var._store(context, v)
 
-    def add_reference(self, node):
+    def _add_reference(self, node):
         self._references.append(weakref.ref(self))
         ref_id = len(self._references)
         return ListRef(self, node, ref_id)
 
-    def has_reference(self):
+    def _has_reference(self):
         return (
-            BaseSymbol.has_reference(self) or
-            any(v.has_reference() for v in self)
+            BaseSymbol._has_reference(self) or
+            any(v._has_reference() for v in self)
         )
 
 class ListRef(Ref):
@@ -158,7 +158,7 @@ class ListRef(Ref):
         Ref.__init__(self, symbol, node, ref_id)
         self.symbol = symbol
         # make sure the last reference shows up first.
-        self.items = list(reversed([v.add_reference(node) for v in reversed(symbol)]))
+        self.items = list(reversed([v._add_reference(node) for v in reversed(symbol)]))
 
     def __repr__(self):
         return "& %s" % (str(self.items))
@@ -179,13 +179,13 @@ class Literal(BaseSymbol):
     """
     def __init__(self, model, value):
         BaseSymbol.__init__(self, model)
-        self.value = value
+        self._value = value
 
     def __repr__(self):
-        return "L(%s)" % (str(self.value))
+        return "L(%s)" % (str(self._value))
 
-    def resolve(self, context):
-        return self.value
+    def _resolve(self, context):
+        return self._value
 
 class AttrSymbol(Literal):
     """ Represents accessing a member attribute of a symbol.
@@ -198,14 +198,14 @@ class AttrSymbol(Literal):
         self._parent = parent
         self._attrname = attrname
 
-    def resolve(self, context):
-        return getattr(self._parent.resolve(context), self._attrname)
+    def _resolve(self, context):
+        return getattr(self._parent._resolve(context), self._attrname)
 
     def __call__(self, *args, **kwargs):
-        return CallSymbol(self.model, self, args, kwargs)
+        return CallSymbol(self._model, self, args, kwargs)
 
     def __getitem__(self, index):
-        return GetItemSymbol(self.model, self, index)
+        return GetItemSymbol(self._model, self, index)
 
     def __repr__(self):
         return "%s.%s" % (str(self._parent), self._attrname)
@@ -219,8 +219,8 @@ class CallSymbol(Literal):
         self._args = args
         self._kwargs = kwargs
 
-    def resolve(self, context):
-        return self._parent.resolve(context)(*self._args, **self._kwargs)
+    def _resolve(self, context):
+        return self._parent._resolve(context)(*self._args, **self._kwargs)
 
 class GetItemSymbol(Literal):
     """ Represents getting an item of a symbol.
@@ -230,8 +230,8 @@ class GetItemSymbol(Literal):
         self._parent = parent
         self._index = index
 
-    def resolve(self, context):
-        return self._parent.resolve(context)[index]
+    def _resolve(self, context):
+        return self._parent._resolve(context)[index]
 
 class ZeroLiteral(Literal):
     """ A ZeroLiteral is specially used to mark zeros in gradient propagation
@@ -243,7 +243,7 @@ class ZeroLiteral(Literal):
     def __repr__(self):
         return "[ZERO]"
 
-    def resolve(self, context):
+    def _resolve(self, context):
         return 0
 
 def assymbol(obj, model):

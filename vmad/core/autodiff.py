@@ -32,9 +32,9 @@ def create_output_vjp(ref, model):
         # largest reference_id, must be the
         # first time seeing the partial derivative
         # define the symbol for the full derivative
-        var_p = Symbol(model, var.vjp_name)
+        var_p = Symbol(model, var._vjp_name)
     else:
-        var_p = Symbol(model, var.vjp_name + '#%d' % ref.ref_id)
+        var_p = Symbol(model, var._vjp_name + '#%d' % ref.ref_id)
 
     return var_p
 
@@ -54,11 +54,11 @@ def connect_output_vjp(ref, model):
 
     # accummulate the partials
     if not ref.is_last_ref():
-        var_f = model.get(var.vjp_name)
-        var_p = model.get(var.vjp_name + '#%d' % ref.ref_id)
+        var_f = model.get(var._vjp_name)
+        var_p = model.get(var._vjp_name + '#%d' % ref.ref_id)
         # create a new symbol for the result, with the same name
         # because we intent to overwrite it.
-        var_f2 = Symbol(model, var.vjp_name)
+        var_f2 = Symbol(model, var._vjp_name)
 
         add(x1=var_f, x2=var_p, y=var_f2)
 
@@ -69,7 +69,7 @@ def create_output_jvp(var, model):
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
-    return Symbol(model, var.jvp_name)
+    return Symbol(model, var._jvp_name)
 
 def create_input_jvp(var, model):
     if isinstance(var, List):
@@ -78,7 +78,7 @@ def create_input_jvp(var, model):
     if isinstance(var, Literal):
         return ZeroLiteral(model)
 
-    return model.get(var.jvp_name)
+    return model.get(var._jvp_name)
 
 def create_input_vjp(var, model):
     if isinstance(var, List):
@@ -87,18 +87,18 @@ def create_input_vjp(var, model):
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
-    if not model.has(var.vjp_name):
+    if not model.has(var._vjp_name):
         # the variable is not declared on the model
         # FIXME: this can either be a bug or the variable is unused.
         return ZeroLiteral(model)
 
-    return model.get(var.vjp_name)
+    return model.get(var._vjp_name)
 
 def vjpmodel(tape):
     """ generate a vector jacobian product model based on a tape """
     model = Model()
     for var in tape.model._vout:
-        model.input(var.vjp_name)
+        model.input(var._vjp_name)
 
     for i, record in enumerate(tape[::-1]):
         p = record.node
@@ -126,11 +126,11 @@ def vjpmodel(tape):
 
     # mark outputs
     for var in tape.model._vin:
-        if not model.has(var.vjp_name):
+        if not model.has(var._vjp_name):
             varout = ZeroLiteral(model)
         else:
-            varout = model.get(var.vjp_name)
-        model.output(**{var.vjp_name : varout})
+            varout = model.get(var._vjp_name)
+        model.output(**{var._vjp_name : varout})
 
     return model
 
@@ -138,7 +138,7 @@ def jvpmodel(tape):
     """ generate a jacobian vector product model based on a tape """
     model = Model()
     for var in tape.model._vin:
-        model.input(var.jvp_name)
+        model.input(var._jvp_name)
 
     for i, record in enumerate(tape):
         p = record.node
@@ -161,10 +161,10 @@ def jvpmodel(tape):
 
     # mark outputs
     for var in tape.model._vout:
-        if not model.has(var.jvp_name):
+        if not model.has(var._jvp_name):
             varout = ZeroLiteral(model)
         else:
-            varout = model.get(var.jvp_name)
-        model.output(**{var.jvp_name : varout})
+            varout = model.get(var._jvp_name)
+        model.output(**{var._jvp_name : varout})
 
     return model
