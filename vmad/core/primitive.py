@@ -32,8 +32,9 @@ def make_symbol(model, obj):
 
     return obj
 
+class SELF: pass
 
-class Primitive(BaseSymbol):
+class Primitive(Symbol):
     """ Primitives are building blocks of models.
 
         Instantiation of a primitive creates a node on a model.
@@ -56,15 +57,13 @@ class Primitive(BaseSymbol):
 
         _check_primitive_class(kls)
 
-        self.varin = {}
-        self.varout = {}
+        self._varin = {}
+        self._varout = {}
         self.hyper_args = {}
 
         kwargs = _parse_args(kls, args, kwargs)
 
         model = _find_model(kls, kwargs)
-
-        BaseSymbol.__init__(self, model)
 
         basename = model.unique_name(kls.__name__)
 
@@ -75,13 +74,19 @@ class Primitive(BaseSymbol):
             #print(basename, var.name, id(var), id(model.get(var.name)))
 
             ref = var.add_reference(self)
-            self.varin[argname] = ref
+            self._varin[argname] = ref
 
+        is_scalar_primitive = False
         for argname in kls.aout:
             if not argname in kwargs:
                 # if a name is not supplied, generate a name
                 varname = basename + '-' + argname
-                var = Symbol(model, varname)
+                if len(kls.aout) == 1:
+                    var = SELF
+                    Symbol.__init__(self, model, varname)
+                    is_scalar_primitive = True
+                else:
+                    var = Symbol(model, varname)
             else:
                 var = kwargs[argname]
                 var = make_symbol(model, kwargs[argname])
@@ -91,15 +96,32 @@ class Primitive(BaseSymbol):
                 # so we die here
                 _check_var_references(var)
 
-            self.varout[argname] = var
+            self._varout[argname] = var
 
         # record all `hyper` arguments that do not go into derivatives.
         for k, v in kwargs.items():
             if k not in kls.ain and k not in kls.aout:
                 self.hyper_args[k] = v
 
+        if not is_scalar_primitive:
+            Symbol.__init__(self, model, basename)
+
         # append self to the model.
         model.append(self)
+
+    @property
+    def varin(self):
+        return self._varin
+
+    @property
+    def varout(self):
+        d = {}
+        # replace SELF with self.
+        for key, value in self._varout.items():
+            if value == SELF:
+                value = self
+            d[key] = value
+        return d
 
     def find_model(self):
         """ Infer the model from args fail if nothing is found """
@@ -121,10 +143,13 @@ class Primitive(BaseSymbol):
 
         """
         for argname in type(self).aout:
-            yield self.varout[argname]
+            symbol = self._varout[argname]
+            if symbol is SELF:
+                symbol = self
+            yield symbol
 
     def __repr__(self):
-        return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self.varout, self._frameinfo[0], self._frameinfo[1])
+        return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self._varout, self._frameinfo[0], self._frameinfo[1])
 
     def call(self, **kwargs):
         """ call the implementation function of the primitive;
