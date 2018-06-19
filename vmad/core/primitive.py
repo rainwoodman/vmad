@@ -8,19 +8,6 @@ def make_symbol(model, obj):
     """ Make a symbol out of an input Python object.
 
     """
-    if isinstance(obj, Primitive):
-        # unpack single output primitives
-        # allows a = primitive(...)
-        # also see __iter__ for explict unpacking (a, b = primitive(...))
-        if len(obj.varout) > 1:
-            raise UnpackError("More than one output variable, need to unpack them")
-        obj = next(iter(obj.varout.values()))
-
-        # FIXME: Alternatively, make Primitive a subclass of Symbol.
-        # But then some Primitives shall be subclasses of List.
-        # the class hierarchy is a bit hairy and sounds like we will
-        # in the end always need to deal with single output and multi output
-        # primitives specially anyways. Shall give it an attempt.
 
     if isinstance(obj, (list, tuple)):
         obj = List(model, [make_symbol(model, i) for i in obj])
@@ -43,6 +30,13 @@ class Primitive(Symbol):
         and attached to the operators classes via the `operator` decorator.
 
     """
+    # Primitive a subclass of Symbol. When there is a single
+    # return value, it behaves like an usual Symbol.
+
+    # When there are multiple return values, or if the return variable(s)
+    # are fed on the calling arguments, it behaves like a list,
+    # and must be unpacked. A strange error (during resolving) is raised if not
+    # unpacked.
 
     def __init__(self, *args, **kwargs):
         """ Creating a node and append it to the model's execution graph
