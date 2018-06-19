@@ -2,23 +2,10 @@ import weakref
 import inspect
 
 from .error import InferError, UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
-from .symbol import BaseSymbol, Symbol, Literal, List
+from .symbol import BaseSymbol, Symbol, Literal, List, assymbol
 
-def make_symbol(model, obj):
-    """ Make a symbol out of an input Python object.
-
-    """
-
-    if isinstance(obj, (list, tuple)):
-        obj = List(model, [make_symbol(model, i) for i in obj])
-
-    # still not a Symbol? Must be some raw python object
-    # intended to be used as a Literal
-    if not isinstance(obj, BaseSymbol):
-        obj = Literal(model, obj)
-
-    return obj
-
+# special object to represent the primitive itself in varout.
+# to avoid circular references.
 class SELF: pass
 
 class Primitive(Symbol):
@@ -62,7 +49,7 @@ class Primitive(Symbol):
         basename = model.unique_name(kls.__name__)
 
         for argname in kls.ain:
-            var = make_symbol(model, kwargs[argname])
+            var = assymbol(kwargs[argname], model=model)
 
             # checking symbol references
             #print(basename, var.name, id(var), id(model.get(var.name)))
@@ -83,7 +70,7 @@ class Primitive(Symbol):
                     var = Symbol(model, varname)
             else:
                 var = kwargs[argname]
-                var = make_symbol(model, kwargs[argname])
+                var = assymbol(kwargs[argname], model=model)
 
                 # already given a symbol, overwrite it
                 # but this doesn't work for gradients / tape

@@ -246,3 +246,18 @@ class ZeroLiteral(Literal):
     def resolve(self, context):
         return 0
 
+def assymbol(obj, model):
+    """ Make a symbol out of an input Python object.
+
+    """
+    # cast list or tuple to a list object:
+    if isinstance(obj, (list, tuple)):
+        obj = List(model, [assymbol(i, model) for i in obj])
+
+    # not a Symbol? Must be some raw python object
+    # intended to be used as a Literal
+    if not isinstance(obj, BaseSymbol):
+        obj = Literal(model, obj)
+
+    return obj
+
