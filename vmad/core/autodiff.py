@@ -19,7 +19,7 @@ def create_output_vjp(ref, model):
     if isinstance(ref, ListRef):
         return List(model, [
                     create_output_vjp(r, model)
-                    for r in ref.value]
+                    for r in ref]
                 )
 
     var = ref.symbol
@@ -42,7 +42,7 @@ def connect_output_vjp(ref, model):
 
     # make lists for lists
     if isinstance(ref, ListRef):
-        for r in ref.value:
+        for r in ref:
             connect_output_vjp(r, model)
         return
 
@@ -64,7 +64,7 @@ def connect_output_vjp(ref, model):
 
 def create_output_jvp(var, model):
     if isinstance(var, List):
-        return [create_output_jvp(v, model) for v in var.value]
+        return [create_output_jvp(v, model) for v in var]
 
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
@@ -73,7 +73,7 @@ def create_output_jvp(var, model):
 
 def create_input_jvp(var, model):
     if isinstance(var, List):
-        return [create_input_jvp(v, model) for v in var.value]
+        return [create_input_jvp(v, model) for v in var]
 
     if isinstance(var, Literal):
         return ZeroLiteral(model)
@@ -82,7 +82,7 @@ def create_input_jvp(var, model):
 
 def create_input_vjp(var, model):
     if isinstance(var, List):
-        return [create_input_vjp(v, model) for v in var.value]
+        return [create_input_vjp(v, model) for v in var]
 
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")

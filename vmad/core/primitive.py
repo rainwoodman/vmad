@@ -3,7 +3,6 @@ import inspect
 
 from .error import InferError, UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .symbol import BaseSymbol, Symbol, Literal, List
-from .refcount import RefCounted
 
 def make_symbol(model, obj):
     """ Make a symbol out of an input Python object.
@@ -34,7 +33,7 @@ def make_symbol(model, obj):
     return obj
 
 
-class Primitive(BaseSymbol, RefCounted):
+class Primitive(BaseSymbol):
     """ Primitives are building blocks of models.
 
         Instantiation of a primitive creates a node on a model.
@@ -66,7 +65,6 @@ class Primitive(BaseSymbol, RefCounted):
         model = _find_model(kls, kwargs)
 
         BaseSymbol.__init__(self, model)
-        RefCounted.__init__(self)
 
         basename = model.unique_name(kls.__name__)
 
@@ -199,7 +197,7 @@ def _check_primitive_class(kls):
 
 def _check_var_references(var):
     if isinstance(var, List):
-        for v in var.value:
+        for v in var:
             _check_var_references(v)
         return
 

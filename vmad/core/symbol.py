@@ -1,8 +1,5 @@
 from .error import ResolveError
 import weakref
-from .refcount import RefCounted
-from .refcount import Ref
-from .refcount import ListRef
 
 class BaseSymbol(object):
     """ A symbol for building models.
@@ -27,7 +24,11 @@ class BaseSymbol(object):
         assert isinstance(model, Model)
 
         self._model = weakref.ref(model)
+
         self._parent = None
+
+        # a list of nodes that makes use of the symbol
+        self._references = []
 
     @property
     def model(self):
@@ -41,12 +42,51 @@ class BaseSymbol(object):
         # Not doing anything to the context by default
         pass
 
-class Symbol(BaseSymbol, RefCounted):
+    def add_reference(self, node):
+        self._references.append(weakref.ref(self))
+        ref_id = len(self._references)
+        return Ref(self, node, ref_id)
+
+    def has_reference(self):
+        return len(self._references) > 0
+
+
+class Ref(object):
+    """
+        A reference is the relation between a symbol and a node.
+    """
+    def __init__(self, symbol, node, ref_id):
+        self.symbol = symbol
+        # the node variable is currently not used anywhere
+    #    self.node = node
+        self.ref_id = ref_id
+
+    def __repr__(self):
+        return "&[%s:%d]" % (self.symbol, self.ref_id)
+
+    def is_last_ref(self):
+        return self.ref_id == len(self.symbol._references)
+
+    def get_symbol_names(self):
+        """ Returns a list of symbol names that are referenced by
+            this object, recursively
+        """
+        from .symbol import Symbol
+        l = set([])
+        symbol = self.symbol
+        # recusrively get the name of the parents
+        # to handle AttrSymbol and CallSymbol
+        while hasattr(symbol, '_parent'):
+            if isinstance(symbol, Symbol):
+                l = l.union([symbol.name])
+            symbol = symbol._parent
+        return l
+
+class Symbol(BaseSymbol):
     def __init__(self, model, name):
         assert isinstance(name, str)
 
         BaseSymbol.__init__(self, model)
-        RefCounted.__init__(self)
 
         self.name = name
 
@@ -73,47 +113,72 @@ class Symbol(BaseSymbol, RefCounted):
     def store(self, context, value):
         context[self.name] = value
 
-class List(BaseSymbol, RefCounted):
+class List(BaseSymbol):
     def __init__(self, model, value):
         BaseSymbol.__init__(self, model)
-        RefCounted.__init__(self)
-
-        self.value = value
+        self._items = value
 
     def __repr__(self):
-        return "L%s" % (str(self.value))
+        return "L%s" % (str(self._items))
 
     def resolve(self, context):
-        return [v.resolve(context) for v in self.value]
+        return [v.resolve(context) for v in self]
 
     def __len__(self):
-        return len(self.value)
+        return len(self._items)
 
     def __getitem__(self, i):
-        return self.value[i]
+        return self._items[i]
 
     def __iter__(self):
-        for v in self.value:
+        for v in self._items:
+            yield v
+
+    def __reversed__(self):
+        for v in reversed(self._items):
             yield v
 
     def store(self, context, value):
-        for var, v in zip(self.value, value):
+        for var, v in zip(self, value):
             var.store(context, v)
 
     def add_reference(self, node):
-        return ListRef(self, node)
+        self._references.append(weakref.ref(self))
+        ref_id = len(self._references)
+        return ListRef(self, node, ref_id)
 
     def has_reference(self):
-        return any(v.has_reference() for v in self.value)
+        return (
+            BaseSymbol.has_reference(self) or
+            any(v.has_reference() for v in self)
+        )
 
-class Literal(BaseSymbol, RefCounted):
+class ListRef(Ref):
+    def __init__(self, symbol, node, ref_id):
+        Ref.__init__(self, symbol, node, ref_id)
+        self.symbol = symbol
+        # make sure the last reference shows up first.
+        self.items = list(reversed([v.add_reference(node) for v in reversed(symbol)]))
+
+    def __repr__(self):
+        return "& %s" % (str(self.items))
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def get_symbol_names(self):
+        r = set()
+        for ref in self.items:
+            r = r.union(ref.get_symbol_names())
+        return r
+
+class Literal(BaseSymbol):
     """ A literal is a special symbol that does not resolve with a context.
 
         Literals do not participate in gradient propagation.
     """
     def __init__(self, model, value):
         BaseSymbol.__init__(self, model)
-        RefCounted.__init__(self)
         self.value = value
 
     def __repr__(self):
