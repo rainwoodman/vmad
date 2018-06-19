@@ -13,7 +13,6 @@ class mul:
         return dict(y = x1 * x2)
 
     def rcd(self, x1, x2, y):
-        model = self.find_model()
         # the other value is not needed, 0 should work.
         if isinstance(self.varin['x1'].symbol, Literal):
             x2 = 0

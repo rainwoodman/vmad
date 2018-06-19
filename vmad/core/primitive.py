@@ -179,22 +179,6 @@ class Primitive(Symbol):
         return type(self).record_impl(self, **d)
 
 
-def _infer_model(var):
-    if isinstance(var, Primitive):
-        var = next(iter(var.varout.values()))
-
-    if isinstance(var, BaseSymbol):
-        model = var.model
-        return model
-
-    if isinstance(var, (list, tuple)):
-        for v in var:
-            model = _infer_model(v)
-            if model is not None:
-                return model
-
-    return None
-
 def _check_primitive_class(kls):
     # assert the primitive is properly defined.
     for attr in ['ain', 'aout', 'impl', 'func', 'argnames', 'operator', 'record_impl']:
@@ -247,3 +231,17 @@ def _find_model(kls, kwargs):
             return model
 
     raise InferError("Cannot infer model from variables -- try to mark at least one literal argument explicitly as Literal")
+
+def _infer_model(var):
+    if isinstance(var, BaseSymbol):
+        model = var.model
+        return model
+
+    if isinstance(var, (list, tuple)):
+        for v in var:
+            model = _infer_model(v)
+            if model is not None:
+                return model
+
+    return None
+
