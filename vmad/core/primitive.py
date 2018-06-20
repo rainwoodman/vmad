@@ -1,7 +1,7 @@
 import weakref
 import inspect
 
-from .error import InferError, UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
+from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .symbol import BaseSymbol, Symbol, Literal, List, assymbol
 
 # special object to represent the primitive itself in varout.
@@ -30,6 +30,8 @@ class Primitive(Symbol):
 
             The model is inferred from the input arguments
         """
+        from .model import Model
+
         # remember the frame info
         previous_frame = inspect.currentframe().f_back
         self._frameinfo = inspect.getframeinfo(previous_frame)
@@ -44,10 +46,12 @@ class Primitive(Symbol):
 
         kwargs = _parse_args(kls, args, kwargs)
 
-        models = _find_models(kls, kwargs)
-        model = _consolidate_models(models, kwargs)
-
-        _find_models(kls, kwargs, reset=model)
+        # gather models
+        models = _walk_models(kls, kwargs)
+        # consolidate
+        model = Model.consolidate(models)
+        # replace models mentioned in kwargs
+        _walk_models(kls, kwargs, reset=model)
 
         basename = model.unique_name(kls.__name__)
 
@@ -204,7 +208,7 @@ def _parse_args(kls, args, kwargs):
 
     return kwargs
 
-def _find_models(kls, kwargs, reset=None):
+def _walk_models(kls, kwargs, reset=None):
     models = set()
 
     for argname in kls.ain:
@@ -225,7 +229,7 @@ def _find_models(kls, kwargs, reset=None):
 def _infer_models(var, reset=None):
     if isinstance(var, Symbol):
         if reset is not None:
-            var._anchor(reset)
+            reset.anchor(var)
 
         model = var._model
         if model is not None:
@@ -242,26 +246,3 @@ def _infer_models(var, reset=None):
 
     return set()
 
-def _consolidate_models(models, kwargs):
-    from .model import ModelInTransient
-    model = None
-    for i in models:
-        if isinstance(i, ModelInTransient): continue
-        if i is None: continue
-        if model is None: # first time seeing a non transient
-            model = i
-        else:
-            raise InferError("Multiple non transient models are found")
-
-    if model is None:
-        if len(models) == 0:
-            model = ModelInTransient()
-        else:
-            # get the first model
-            model = next(iter(models))
-
-    for i in models:
-        if i is model: continue # skip 'the' model
-        model.extend(i)
-
-    return model

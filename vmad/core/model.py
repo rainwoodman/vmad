@@ -1,10 +1,13 @@
 from .symbol import Symbol, Literal
 from .operator import terminal
-from .error import DuplicatedOutput
+from .error import DuplicatedOutput, InferError
 from .context import Context
 from .tape import Tape
+
 from collections import OrderedDict
 import uuid
+import weakref
+
 
 class Model(list):
     def __init__(self):
@@ -29,12 +32,6 @@ class Model(list):
         self._vout.extend(other._vout)
 
         list.extend(self, other)
-
-    def register(self, r):
-        assert r._name is not None
-
-        self._syms[r._name] = r
-        return r
 
     def get(self, varname):
         return self._syms[varname]
@@ -67,7 +64,7 @@ class Model(list):
                 r = Symbol(name)
 
             # anchor it to self
-            r._anchor(self)
+            self.anchor(r)
             v.append(r)
 
         self._vin.extend(v)
@@ -76,6 +73,22 @@ class Model(list):
             return v[0]
 
         return v
+
+    def anchor(self, symbol):
+        if symbol._anchored:
+            if not symbol._transient:
+                if symbol._model is not self:
+                    raise ModelError("cannot change the model after the symbol is no longer in transient.")
+
+        if isinstance(self, ModelInTransient):
+            # use strong reference to keep these Transient models alive.
+            # they will be replaced by the Model in the end as we put symbols
+            # together via primitives.
+            symbol._model_ref = self
+        else:
+            symbol._model_ref = weakref.ref(self)
+
+        self._syms[symbol._name] = symbol
 
     def output(self, **kwargs):
         for varname, oldvar in kwargs.items():
@@ -276,6 +289,38 @@ class Model(list):
             gnhpout = OrderedDict(zip(vjpvout, gnhpout))
 
         return out, gnhpout
+
+    @staticmethod
+    def consolidate(models):
+        """ Consolidate several models into a single one.
+
+            The non-transient model is preferred.
+
+            After this call all but the returned model
+            shall be considered invalid.
+        """
+        model = None
+        # find the non-transient model
+        for i in models:
+            if isinstance(i, ModelInTransient): continue
+            if i is None: continue
+            if model is None: # first time seeing a non transient
+                model = i
+            else:
+                raise InferError("Multiple non transient models are found")
+
+        if model is None:
+            if len(models) == 0:
+                model = ModelInTransient()
+            else:
+                # get the first model
+                model = next(iter(models))
+
+        for i in models:
+            if i is model: continue # skip 'the' model
+            model.extend(i)
+
+        return model
 
 class ModelInTransient(Model):
     """ A model that is in transient, eventually will be added to a 'real' model.
