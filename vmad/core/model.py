@@ -43,11 +43,39 @@ class Model(list):
         return varname in self._syms
 
     def input(self, *args):
-        r = [Symbol(a, model=self) for a in args]
-        self._vin.extend(r)
+        """ Declare multiple input variables.
+
+            Parameters
+            ----------
+            args : list of input variables.
+                    can be either instances of Symbol or
+                    a string, in which case a Symbol is
+                    created.
+
+            Returns
+            -------
+            variables : list or a single object if len(args) == 1
+                Symbols, marked as inputs and anchored to the model.
+
+        """
+        # FIXME: assert the Symbol hasn't been used
+        v = []
+        for name in args:
+            if isinstance(name, Symbol):
+                r = name
+            else:
+                r = Symbol(name)
+
+            # anchor it to self
+            r._anchor(self)
+            v.append(r)
+
+        self._vin.extend(v)
+
         if len(args) == 1:
-            r = r[0]
-        return r
+            return v[0]
+
+        return v
 
     def output(self, **kwargs):
         for varname, oldvar in kwargs.items():
