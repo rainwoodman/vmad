@@ -4,15 +4,30 @@ from .error import DuplicatedOutput
 from .context import Context
 from .tape import Tape
 from collections import OrderedDict
+import uuid
 
 class Model(list):
     def __init__(self):
-        self._counter = 0
         self._vin = []
         self._vout = []
 
         # symbols that are registered for autodiff
         self._syms = {}
+        self._name = uuid.uuid4().hex
+
+    def __hash__(self):
+        return hash(self._name)
+
+    def extend(self, other):
+        """ concatenate the model with another model.
+        """
+
+        self._vin.extend(other._vin)
+        self._vout.extend(other._vout)
+        self._syms.update(other._syms)
+
+        print('extending', list(self), list(other))
+        list.extend(self, other)
 
     def register(self, r):
         assert r._name is not None
@@ -46,8 +61,7 @@ class Model(list):
     def compile(self): pass
 
     def unique_name(self, str):
-        self._counter += 1
-        return '%s@%d' % (str, self._counter)
+        return '%s-%s' % (str, uuid.uuid4().hex)
 
     def __repr__(self):
         return "Model: %s => %s" % (self._vin, self._vout)
@@ -233,6 +247,17 @@ class Model(list):
             gnhpout = OrderedDict(zip(vjpvout, gnhpout))
 
         return out, gnhpout
+
+class ModelInTransient(Model):
+    """ A model that is in transient, eventually will be added to a 'real' model.
+
+        This is necessary as we start building a model with symbols that haven't been
+        associated to the desired model.
+
+        They will be first added to a transient model,
+        then when the true model is seen they will be added to the model.
+    """
+    pass
 
 class Builder(Model):
     """ A context manager to signify the process of buildig a model.

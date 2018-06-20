@@ -18,21 +18,11 @@ class BaseSymbol(object):
 
         Only named symbols are registered for autodiff.
     """
-    def __init__(self, model):
-        from .model import Model
-
-        assert isinstance(model, Model)
-
-        self._model_ref = weakref.ref(model)
-
+    def __init__(self):
         self._parent = None
 
         # a list of nodes that makes use of the symbol
         self._references = []
-
-    @property
-    def _model(self):
-        return self._model_ref()
 
     def _resolve(self, context):
         raise NotImplementedError
@@ -62,7 +52,7 @@ class Ref(object):
         self.ref_id = ref_id
 
     def __repr__(self):
-        return "&[%s:%d]" % (self.symbol, self.ref_id)
+        return "&[%s:%d]" % (repr(self.symbol), self.ref_id)
 
     def is_last_ref(self):
         return self.ref_id == len(self.symbol._references)
@@ -83,19 +73,45 @@ class Ref(object):
         return l
 
 class Symbol(BaseSymbol):
+    """ A symbol remembers the model only for eaiser model construction. """
     def __init__(self, model, name):
         assert isinstance(name, str)
 
-        BaseSymbol.__init__(self, model)
+        from .model import Model
+
+        assert isinstance(model, Model)
+
+        self._model = model
+
+        BaseSymbol.__init__(self)
 
         self._name = name
 
         model.register(self)
 
+    @property
+    def _model(self):
+        from .model import ModelInTransient
+        if isinstance(self._model_ref, ModelInTransient):
+            return self._model_ref
+        else:
+            return self._model_ref()
+
+    @_model.setter
+    def _model(self, value):
+        from .model import ModelInTransient
+        if not isinstance(value, ModelInTransient):
+            self._model_ref = weakref.ref(value)
+        else:
+            self._model_ref = value
+
     def __getattr__(self, attrname):
         if attrname.startswith('_'):
             raise AttributeError
         return AttrSymbol(self._model, self, attrname)
+
+    def __repr__(self):
+        return self._name
 
     @property
     def _vjp_name(self):
@@ -115,7 +131,7 @@ class Symbol(BaseSymbol):
 
 class List(BaseSymbol):
     def __init__(self, model, value):
-        BaseSymbol.__init__(self, model)
+        BaseSymbol.__init__(self)
         self._items = value
 
     def __repr__(self):
@@ -178,7 +194,7 @@ class Literal(BaseSymbol):
         Literals do not participate in gradient propagation.
     """
     def __init__(self, model, value):
-        BaseSymbol.__init__(self, model)
+        BaseSymbol.__init__(self)
         self._value = value
 
     def __repr__(self):

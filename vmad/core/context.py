@@ -1,7 +1,7 @@
 from .operator import terminal
 from .error import UnexpectedOutput, makeExecutionError, ModelError
 
-_raise_internal_errors = False
+_raise_internal_errors = True
 
 def set_raise_internal_errors(flag):
     """ If raise_internal_errors is set to True, then the errors in

@@ -5,9 +5,11 @@ import pytest
 def test_error_infer():
     from vmad.core.error import InferError
     with Builder() as m:
-        a = m.input('a')
-        with pytest.raises(InferError):
-            add(x1=1, x2=1)
+        with Builder() as m2:
+            a = m.input('a')
+            b = m2.input('a')
+            with pytest.raises(InferError):
+                add(x1=a, x2=b)
 
 def test_error_bad_arg1():
     from vmad.core.error import BadArgument

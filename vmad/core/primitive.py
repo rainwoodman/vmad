@@ -44,7 +44,10 @@ class Primitive(Symbol):
 
         kwargs = _parse_args(kls, args, kwargs)
 
-        model = _find_model(kls, kwargs)
+        models = _find_models(kls, kwargs)
+        model = _consolidate_models(models, kwargs)
+
+        _find_models(kls, kwargs, reset=model)
 
         basename = model.unique_name(kls.__name__)
 
@@ -119,7 +122,8 @@ class Primitive(Symbol):
             yield symbol
 
     def __repr__(self):
-        return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self._varout, self._frameinfo[0], self._frameinfo[1])
+        #return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self._varout, self._frameinfo[0], self._frameinfo[1])
+        return "%s" % self._name
 
     def call(self, **kwargs):
         """ call the implementation function of the primitive;
@@ -200,37 +204,63 @@ def _parse_args(kls, args, kwargs):
 
     return kwargs
 
-def _find_model(kls, kwargs):
-    model = None
+def _find_models(kls, kwargs, reset=None):
+    models = set()
 
     for argname in kls.ain:
         if not argname in kwargs: raise MissingArgument("input argument '%s' not provided" % argname)
 
         var = kwargs[argname]
-        model = _infer_model(var)
-        if model is not None:
-            return model
+        models = models.union(_infer_models(var, reset=reset))
 
     for argname in kls.aout:
         if argname not in kwargs: continue
         var = kwargs[argname]
 
-        model = _infer_model(var)
-        if model is not None:
-            return model
+        models = models.union(_infer_models(var, reset=reset))
 
-    raise InferError("Cannot infer model from variables -- try to mark at least one literal argument explicitly as Literal")
+    return models
 
-def _infer_model(var):
-    if isinstance(var, BaseSymbol):
+
+def _infer_models(var, reset=None):
+    if isinstance(var, Symbol):
+        if reset is not None:
+            var._model = reset
+
         model = var._model
-        return model
+        if model is not None:
+            return set([model])
+        else:
+            return set()
 
     if isinstance(var, (list, tuple)):
+        models = set()
         for v in var:
-            model = _infer_model(v)
-            if model is not None:
-                return model
+            models = models.union(_infer_models(v, reset=reset))
 
-    return None
+        return models
 
+    return set()
+
+def _consolidate_models(models, kwargs):
+    from .model import ModelInTransient
+    model = None
+    for i in models:
+        if isinstance(i, ModelInTransient): continue
+        if model is None: # first time seeing a non transient
+            model = i
+        else:
+            raise InferError("Multiple non transient models are found")
+
+    if model is None:
+        if len(models) == 0:
+            model = ModelInTransient()
+        else:
+            # get the first model
+            model = next(iter(models))
+
+    for i in models:
+        if i is model: continue # skip 'the' model
+        model.extend(i)
+
+    return model
