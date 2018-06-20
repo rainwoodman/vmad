@@ -208,9 +208,9 @@ def test_operator_list_out():
 
         # it is very awkward to prepare a list output
         # I doubt this will be of any usefulness
-        b1 = Symbol(m, 'b1')
-        b2 = Symbol(m, 'b2')
-        l = List(m, [b1, b2])
+        b1 = Symbol('b1')
+        b2 = Symbol('b2')
+        l = List([b1, b2])
 
         t = split(x=a, axis=0, args=l)
         assert isinstance(next(iter(t)), List)

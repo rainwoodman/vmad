@@ -1,5 +1,4 @@
 from vmad import operator, autooperator
-from vmad.core.model import Literal
 from pmesh.pm import ParticleMesh
 from vmad.lib import linalg
 import numpy
@@ -223,7 +222,6 @@ class lpt1:
 
     def main(self, rhok, q, pm):
         p = apply_transfer(rhok, fourier_space_laplace)
-        q = Literal(self, q)
 
         layout = decompose(q, pm)
 

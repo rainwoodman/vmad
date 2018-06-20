@@ -42,7 +42,7 @@ class Model(list):
         return varname in self._syms
 
     def input(self, *args):
-        r = [Symbol(self, a) for a in args]
+        r = [Symbol(a, model=self) for a in args]
         self._vin.extend(r)
         if len(args) == 1:
             r = r[0]
@@ -54,7 +54,7 @@ class Model(list):
                 if var._name == varname:
                     raise DuplicatedOutput("Variable %s is already marked as an output" % varname)
 
-            var = Symbol(self, varname)
+            var = Symbol(varname, model=self)
             terminal(x=oldvar, y=var)
             self._vout.append(var)
 

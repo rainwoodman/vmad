@@ -1,5 +1,4 @@
 from vmad import operator, autooperator
-from vmad.core.model import Literal
 import numpy
 
 @operator

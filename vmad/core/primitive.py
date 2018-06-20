@@ -52,7 +52,7 @@ class Primitive(Symbol):
         basename = model.unique_name(kls.__name__)
 
         for argname in kls.ain:
-            var = assymbol(kwargs[argname], model=model)
+            var = assymbol(kwargs[argname])
 
             # checking symbol references
             #print(basename, var.name, id(var), id(model.get(var.name)))
@@ -67,13 +67,13 @@ class Primitive(Symbol):
                 varname = basename + '-' + argname
                 if len(kls.aout) == 1:
                     var = SELF
-                    Symbol.__init__(self, model, varname)
+                    Symbol.__init__(self, varname, model=model)
                     is_scalar_primitive = True
                 else:
-                    var = Symbol(model, varname)
+                    var = Symbol(varname, model=model)
             else:
                 var = kwargs[argname]
-                var = assymbol(kwargs[argname], model=model)
+                var = assymbol(kwargs[argname])
 
                 # already given a symbol, overwrite it
                 # but this doesn't work for gradients / tape
@@ -88,7 +88,7 @@ class Primitive(Symbol):
                 self.hyper_args[k] = v
 
         if not is_scalar_primitive:
-            Symbol.__init__(self, model, basename)
+            Symbol.__init__(self, basename, model=model)
 
         # append self to the model.
         model.append(self)
@@ -247,6 +247,7 @@ def _consolidate_models(models, kwargs):
     model = None
     for i in models:
         if isinstance(i, ModelInTransient): continue
+        if i is None: continue
         if model is None: # first time seeing a non transient
             model = i
         else:

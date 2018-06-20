@@ -13,9 +13,6 @@ class BaseSymbol(object):
 
         operators if they take the symbol as an input.
 
-        A symbol is bound to a model; this is useful
-        for the operators to infer the model during model construction.
-
         Only named symbols are registered for autodiff.
     """
     def __init__(self):
@@ -73,21 +70,20 @@ class Ref(object):
         return l
 
 class Symbol(BaseSymbol):
-    """ A symbol remembers the model only for eaiser model construction. """
-    def __init__(self, model, name):
+    """ A symbol remembers the model only for eaiser model construction.
+
+        A symbol is bound to a model; this is useful
+        for the operators to infer the model during model construction.
+    """
+    def __init__(self, name, model=None):
         assert isinstance(name, str)
-
-        from .model import Model
-
-        assert isinstance(model, Model)
-
-        self._model = model
 
         BaseSymbol.__init__(self)
 
         self._name = name
 
-        model.register(self)
+        self._model = model
+        self._model.register(self)
 
     @property
     def _model(self):
@@ -100,15 +96,18 @@ class Symbol(BaseSymbol):
     @_model.setter
     def _model(self, value):
         from .model import ModelInTransient
-        if not isinstance(value, ModelInTransient):
-            self._model_ref = weakref.ref(value)
-        else:
+        if value is None:
+            value = ModelInTransient()
+
+        if isinstance(value, ModelInTransient):
             self._model_ref = value
+        else:
+            self._model_ref = weakref.ref(value)
 
     def __getattr__(self, attrname):
         if attrname.startswith('_'):
             raise AttributeError
-        return AttrSymbol(self._model, self, attrname)
+        return AttrSymbol(self, attrname)
 
     def __repr__(self):
         return self._name
@@ -130,7 +129,7 @@ class Symbol(BaseSymbol):
         context[self._name] = value
 
 class List(BaseSymbol):
-    def __init__(self, model, value):
+    def __init__(self, value):
         BaseSymbol.__init__(self)
         self._items = value
 
@@ -193,7 +192,7 @@ class Literal(BaseSymbol):
 
         Literals do not participate in gradient propagation.
     """
-    def __init__(self, model, value):
+    def __init__(self, value):
         BaseSymbol.__init__(self)
         self._value = value
 
@@ -209,8 +208,8 @@ class AttrSymbol(Literal):
         The attribute is always treated as a literal. The suitable context
         is saying getting the size of an array.
     """
-    def __init__(self, model, parent, attrname):
-        Literal.__init__(self, model, None)
+    def __init__(self, parent, attrname):
+        Literal.__init__(self, None)
         self._parent = parent
         self._attrname = attrname
 
@@ -218,10 +217,10 @@ class AttrSymbol(Literal):
         return getattr(self._parent._resolve(context), self._attrname)
 
     def __call__(self, *args, **kwargs):
-        return CallSymbol(self._model, self, args, kwargs)
+        return CallSymbol(self, args, kwargs)
 
     def __getitem__(self, index):
-        return GetItemSymbol(self._model, self, index)
+        return GetItemSymbol(self, index)
 
     def __repr__(self):
         return "%s.%s" % (str(self._parent), self._attrname)
@@ -229,8 +228,8 @@ class AttrSymbol(Literal):
 class CallSymbol(Literal):
     """ Represents calling a member attribute of a symbol.
     """
-    def __init__(self, model, parent, args, kwargs):
-        Literal.__init__(self, model, None)
+    def __init__(self, parent, args, kwargs):
+        Literal.__init__(self, None)
         self._parent = parent
         self._args = args
         self._kwargs = kwargs
@@ -241,8 +240,8 @@ class CallSymbol(Literal):
 class GetItemSymbol(Literal):
     """ Represents getting an item of a symbol.
     """
-    def __init__(self, model, parent, index):
-        Literal.__init__(self, model, None)
+    def __init__(self, parent, index):
+        Literal.__init__(self, None)
         self._parent = parent
         self._index = index
 
@@ -253,8 +252,8 @@ class ZeroLiteral(Literal):
     """ A ZeroLiteral is specially used to mark zeros in gradient propagation
 
     """
-    def __init__(self, model):
-        Literal.__init__(self, model, None)
+    def __init__(self):
+        Literal.__init__(self, None)
 
     def __repr__(self):
         return "[ZERO]"
@@ -262,18 +261,18 @@ class ZeroLiteral(Literal):
     def _resolve(self, context):
         return 0
 
-def assymbol(obj, model):
+def assymbol(obj):
     """ Make a symbol out of an input Python object.
 
     """
     # cast list or tuple to a list object:
     if isinstance(obj, (list, tuple)):
-        obj = List(model, [assymbol(i, model) for i in obj])
+        obj = List([assymbol(i) for i in obj])
 
     # not a Symbol? Must be some raw python object
     # intended to be used as a Literal
     if not isinstance(obj, BaseSymbol):
-        obj = Literal(model, obj)
+        obj = Literal(obj)
 
     return obj
 

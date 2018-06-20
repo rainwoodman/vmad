@@ -1,7 +1,6 @@
 from __future__ import print_function
 from pprint import pprint
 from vmad.lib import fastpm, linalg
-from vmad.core.symbol import Literal
 import numpy
 from vmad import autooperator
 
@@ -77,7 +76,7 @@ class Test_cdot(BaseScalarTest):
     x_ = create_bases(x)
 
     def model(self, x):
-        x1 = fastpm.r2c(Literal(x._model, self.x1))
+        x1 = fastpm.r2c(self.x1)
         x = fastpm.r2c(x)
         return fastpm.cdot(x, x1)
 
