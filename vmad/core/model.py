@@ -22,9 +22,11 @@ class Model(list):
         """ concatenate the model with another model.
         """
 
+        # _syms are merged as we reanchor the _model of
+        # symbols.
+
         self._vin.extend(other._vin)
         self._vout.extend(other._vout)
-        self._syms.update(other._syms)
 
         list.extend(self, other)
 

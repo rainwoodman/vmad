@@ -97,8 +97,7 @@ class Symbol(BaseSymbol):
             model = ModelInTransient()
 
         self._model_ref = None
-        self._model = model
-        self._model.register(self)
+        self._anchor(model)
 
     @property
     def _model(self):
@@ -108,21 +107,22 @@ class Symbol(BaseSymbol):
         else:
             return self._model_ref()
 
-    @_model.setter
-    def _model(self, value):
+    def _anchor(self, model):
         from .model import ModelInTransient
         from .model import Model
-        assert isinstance(value, Model)
+        assert isinstance(model, Model)
 
-        if isinstance(value, ModelInTransient):
-            self._model_ref = value
+        model.register(self)
+
+        if isinstance(model, ModelInTransient):
+            self._model_ref = model
         else:
             if self._model_ref is not None:
                 if not isinstance(self._model_ref, ModelInTransient):
-                    if self._model is not value:
+                    if self._model is not model:
                         raise ModelError("cannot change the model after the symbol is already anchored.")
 
-            self._model_ref = weakref.ref(value)
+            self._model_ref = weakref.ref(model)
 
     def __repr__(self):
         return self._name

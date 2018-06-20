@@ -225,7 +225,7 @@ def _find_models(kls, kwargs, reset=None):
 def _infer_models(var, reset=None):
     if isinstance(var, Symbol):
         if reset is not None:
-            var._model = reset
+            var._anchor(reset)
 
         model = var._model
         if model is not None:
