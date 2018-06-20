@@ -37,6 +37,16 @@ class BaseSymbol(object):
     def _has_reference(self):
         return len(self._references) > 0
 
+    def __call__(self, *args, **kwargs):
+        return CallSymbol(self, args, kwargs)
+
+    def __getitem__(self, index):
+        return GetItemSymbol(self, index)
+
+    def __getattr__(self, attrname):
+        if attrname.startswith('_'):
+            raise AttributeError
+        return AttrSymbol(self, attrname)
 
 class Ref(object):
     """
@@ -113,11 +123,6 @@ class Symbol(BaseSymbol):
                         raise ModelError("cannot change the model after the symbol is already anchored.")
 
             self._model_ref = weakref.ref(value)
-
-    def __getattr__(self, attrname):
-        if attrname.startswith('_'):
-            raise AttributeError
-        return AttrSymbol(self, attrname)
 
     def __repr__(self):
         return self._name
@@ -212,6 +217,11 @@ class Literal(BaseSymbol):
     def _resolve(self, context):
         return self._value
 
+    def __getattr__(self, attrname):
+        if attrname.startswith('_'):
+            raise AttributeError
+        return AttrSymbol(self, attrname)
+
 class AttrSymbol(Literal):
     """ Represents accessing a member attribute of a symbol.
 
@@ -225,12 +235,6 @@ class AttrSymbol(Literal):
 
     def _resolve(self, context):
         return getattr(self._parent._resolve(context), self._attrname)
-
-    def __call__(self, *args, **kwargs):
-        return CallSymbol(self, args, kwargs)
-
-    def __getitem__(self, index):
-        return GetItemSymbol(self, index)
 
     def __repr__(self):
         return "%s.%s" % (str(self._parent), self._attrname)
