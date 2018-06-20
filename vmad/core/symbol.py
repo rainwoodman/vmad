@@ -1,4 +1,4 @@
-from .error import ResolveError
+from .error import ResolveError, ModelError
 import weakref
 
 class BaseSymbol(object):
@@ -82,6 +82,11 @@ class Symbol(BaseSymbol):
 
         self._name = name
 
+        if model is None:
+            from .model import ModelInTransient
+            model = ModelInTransient()
+
+        self._model_ref = None
         self._model = model
         self._model.register(self)
 
@@ -96,12 +101,17 @@ class Symbol(BaseSymbol):
     @_model.setter
     def _model(self, value):
         from .model import ModelInTransient
-        if value is None:
-            value = ModelInTransient()
+        from .model import Model
+        assert isinstance(value, Model)
 
         if isinstance(value, ModelInTransient):
             self._model_ref = value
         else:
+            if self._model_ref is not None:
+                if not isinstance(self._model_ref, ModelInTransient):
+                    if self._model is not value:
+                        raise ModelError("cannot change the model after the symbol is already anchored.")
+
             self._model_ref = weakref.ref(value)
 
     def __getattr__(self, attrname):
