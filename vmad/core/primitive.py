@@ -70,6 +70,10 @@ class Primitive(Symbol):
                 # if a name is not supplied, generate a name
                 varname = basename + '-' + argname
                 if len(kls.aout) == 1:
+                    # this is a scalar return value function
+                    # the primitive it self is the new symbol
+                    # FIXME: consider converting primitives to
+                    # functions to allow actually creating symbols
                     var = SELF
                     Symbol.__init__(self, varname, model=model)
                     is_scalar_primitive = True
