@@ -26,7 +26,6 @@ class Model(list):
         self._vout.extend(other._vout)
         self._syms.update(other._syms)
 
-        print('extending', list(self), list(other))
         list.extend(self, other)
 
     def register(self, r):
