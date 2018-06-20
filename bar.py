@@ -1,8 +1,8 @@
 from vmad import Builder, autooperator
 from vmad.lib import fastpm, mpi, linalg
 from vmad.contrib import cosmo4d
-from abopt.trustregion import TrustRegionCG
-from abopt.lbfgs import LBFGS
+from abopt.abopt2 import TrustRegionCG
+from abopt.abopt2 import LBFGS
 
 import numpy
 
