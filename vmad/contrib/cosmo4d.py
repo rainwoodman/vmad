@@ -70,7 +70,7 @@ class PriorOperator:
     def main(self, s, fs, invS):
         # when |s|^2 and invS are the same, this is supposed
         # to return 1.0
-        fac = linalg.pow(s.pm.Nmesh.prod(), -0.5)
+        fac = s.eval("x.pm.Nmesh.prod() ** -0.5")
         fac = linalg.mul(fac, invS ** 0.5)
         s_over_Shalf = linalg.mul(s, fac)
         r = fastpm.c2r(s_over_Shalf)
