@@ -18,6 +18,23 @@ class Operator(object):
     def __call__(self, *args, **kwargs):
         return self._apl(*args, **kwargs)
 
+    def __get__(self, instance, owner):
+        if instance is not None:
+            return InstanceOperator(self, instance)
+        else:
+            return self
+
+class InstanceOperator(Operator):
+    def __init__(self, base, instance):
+        self.base = base
+        self.instance = instance
+
+    def __call__(self, *args, **kwargs):
+        return self.base(self.instance, *args, **kwargs)
+
+    def __getattr__(self, attrname):
+        return getattr(self.base, attrname)
+
 def _to_ordereddict(ain):
     from collections import OrderedDict
 
