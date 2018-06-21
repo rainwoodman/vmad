@@ -187,7 +187,6 @@ def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all)
 
     """
     from .primitive import Primitive
-    from .symbol import Symbol
 
     assert func in ('apl', 'vjp', 'jvp')
 
@@ -205,11 +204,15 @@ def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all)
             aout['_' + arg] = obj.ain[arg]
 
         for arg in obj.aout:
+            # skip unused input vector args
+            if '_' + arg not in argnames: continue
             ain['_' + arg] = obj.aout[arg]
         impl = zerobypass(impl)
 
     elif func == 'jvp' : # in and out are prefixed.
         for arg in obj.ain:
+            # skip unused input vector args
+            if arg + '_' not in argnames: continue
             ain[arg + '_'] = obj.ain[arg]
 
         for arg in obj.aout:
