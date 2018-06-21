@@ -28,7 +28,7 @@ Pnn = lambda k: 1.0
 
 ForwardModelHyperParameters = dict(
             q = pm.generate_uniform_particle_grid(),
-            stages=[1.0],
+            stages=[0.5, 1.0],
             cosmology=Planck15,
             pm=pm)
 
