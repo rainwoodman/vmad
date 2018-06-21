@@ -17,23 +17,6 @@ class to_scalar:
     def jvp(self, x_, x):
         return dict(y_ = x.cdot(x_) * 2)
 
-# FIXME: this is probably not correct.
-"""
-@operator
-class to_scalar_co:
-    ain = {'x' : 'ndarray'}
-    aout = {'y' : '*'}
-
-    def apl(self, x, comm):
-        return dict(y = comm.allreduce((x * numpy.conj(x)).sum()))
-
-    def vjp(self, _y, x, comm):
-        return dict(_x = 2 * numpy.conj(_y) * x)
-
-    def jvp(self, x_, x, comm):
-        return dict(y_ = comm.allreduce((x_ * numpy.conj(x) + numpy.conj(x_) * x).sum()))
-"""
-
 @operator
 class as_complex_field:
     ain = {'x' : '*'}

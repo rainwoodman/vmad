@@ -1,6 +1,31 @@
 from vmad import operator
 from vmad.core.symbol import Literal, ZeroLiteral
+from vmad.core.symbol import Symbol
+
 import numpy
+
+class LinalgSymbol(Symbol):
+    """ mixing-in that allows linear algrebra operations on a symbol """
+    def __mul__(self, other):
+        return mul(self, other)
+
+    def __add__(self, other):
+        return add(self, other)
+
+    def __sub__(self, other):
+        n = mul(other, -1)
+        return add(self, n)
+
+    def __div__(self, other):
+        n = pow(other, -1)
+        return mul(self, n)
+
+    def __pow__(self, n):
+        return pow(self, n)
+
+    def __abs__(self):
+        return abs(self)
+
 
 @operator
 class mul:
@@ -39,7 +64,7 @@ class matmul:
     def vjp(self, _C,A):
         _x=numpy.einsum('ijk,ij->ik',A,_C)
         return dict(_x=_x)
-    
+
     def jvp(self, x_,A):
         C_=numpy.einsum('ik,ijk->ij',x_,A)
         return dict(C_=C_)
