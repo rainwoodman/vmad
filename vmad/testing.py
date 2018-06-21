@@ -25,7 +25,8 @@ class BaseScalarTest:
         with Builder() as m:
             x = m.input('x')
             x = self.model(x)
-            y = self.to_scalar(x)
+            # avoid using the bound function.
+            y = type(self).to_scalar(x)
             m.output(y=y)
 
         self.m = m
