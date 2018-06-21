@@ -44,6 +44,7 @@ class BaseSymbol(object):
         return GetItemSymbol(self, index)
 
     def __getattr__(self, attrname):
+        # must be an internal attribute, do not defer it to computing time.
         if attrname.startswith('_'):
             raise AttributeError
         return AttrSymbol(self, attrname)

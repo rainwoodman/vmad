@@ -11,7 +11,12 @@ from __future__ import print_function
 
 """
 
-class Operator(object): pass
+class Operator(object):
+    def __init__(self, prototype):
+        self.prototype = prototype
+
+    def __call__(self, *args, **kwargs):
+        return self._apl(*args, **kwargs)
 
 def _to_ordereddict(ain):
     from collections import OrderedDict
@@ -79,13 +84,13 @@ def unbound(method):
     return method
 
 def operator(kls):
-    """ Decorator to declare an operator. 
+    """ Decorator to declare an operator object from an operator class.
 
-        The decorator is similar to a meta-class. It produces a
-        new class with Operator as a baseclass, and apl, jvp and vjp are
-        converted to primitives.
+        The decorator is similar to a constructor. It produces a
+        new object of type Operator, and with attributes apl, jvp and vjp as
+        primitives.
 
-        An operator must define `ain, aout` and apl, vjp, jvp functions.
+        An operator class must define `ain, aout` and apl, vjp, jvp functions.
 
         ain : dict(name => type_pattern) describes the input arguments of
               the operator
@@ -125,23 +130,30 @@ def operator(kls):
     else:
         record_impl = record_copy_autodiff
 
-    kls.ain = _to_ordereddict(kls.ain)
-    kls.aout = _to_ordereddict(kls.aout)
+    obj = Operator(kls)
 
-    kls._apl = _make_primitive(kls, 'apl', unbound(kls.apl),
+    obj.ain = _to_ordereddict(kls.ain)
+    obj.aout = _to_ordereddict(kls.aout)
+
+    obj._apl = _make_primitive(obj, 'apl', unbound(kls.apl),
         record_impl=record_impl)
 
     if hasattr(kls, 'vjp'):
-        kls._vjp = _make_primitive(kls, 'vjp', unbound(kls.vjp))
-    if hasattr(kls, 'jvp'):
-        kls._jvp = _make_primitive(kls, 'jvp', unbound(kls.jvp))
+        obj._vjp = _make_primitive(obj, 'vjp', unbound(kls.vjp))
+    else:
+        obj._vjp = None
 
-    return type(kls.__name__, (Operator, kls, kls._apl), {})
+    if hasattr(kls, 'jvp'):
+        obj._jvp = _make_primitive(obj, 'jvp', unbound(kls.jvp))
+    else:
+        obj._jvp = None
+
+    return obj
 
 def zerobypass(impl):
     def zerobypassimpl(self, **kwargs):
-        ain = type(self).ain
-        aout = type(self).aout
+        ain = self.ain
+        aout = self.aout
         if all(kwargs[argname] is 0 for argname in ain):
             d = {}
             for argname in aout:
@@ -150,7 +162,7 @@ def zerobypass(impl):
         return impl(self, **kwargs)
     return zerobypassimpl
 
-def _make_primitive(operator, func, impl, argnames=None, record_impl=record_copy_all):
+def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all):
     """ create primitives for the operator.
 
         This is used to define a primitive based on the unbound method
@@ -162,8 +174,6 @@ def _make_primitive(operator, func, impl, argnames=None, record_impl=record_copy
 
     assert func in ('apl', 'vjp', 'jvp')
 
-    kls = operator
-
 
     aout = {}
     ain = {}
@@ -171,22 +181,22 @@ def _make_primitive(operator, func, impl, argnames=None, record_impl=record_copy
         argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
 
     if func == 'apl':
-        ain = kls.ain
-        aout = kls.aout
+        ain = obj.ain
+        aout = obj.aout
     elif func == 'vjp' : # in and out are prefixed.
-        for arg in kls.ain:
-            aout['_' + arg] = kls.ain[arg]
+        for arg in obj.ain:
+            aout['_' + arg] = obj.ain[arg]
 
-        for arg in kls.aout:
-            ain['_' + arg] = kls.aout[arg]
+        for arg in obj.aout:
+            ain['_' + arg] = obj.aout[arg]
         impl = zerobypass(impl)
 
     elif func == 'jvp' : # in and out are prefixed.
-        for arg in kls.ain:
-            ain[arg + '_'] = kls.ain[arg]
+        for arg in obj.ain:
+            ain[arg + '_'] = obj.ain[arg]
 
-        for arg in kls.aout:
-            aout[arg + '_'] = kls.aout[arg]
+        for arg in obj.aout:
+            aout[arg + '_'] = obj.aout[arg]
         impl = zerobypass(impl)
 
     members =  dict(
@@ -196,12 +206,12 @@ def _make_primitive(operator, func, impl, argnames=None, record_impl=record_copy
                 ain      = ain,
                 aout     = aout,
                 argnames = argnames,
-                operator = operator,
+                operator = obj, # need a reference to the operator object to look up jvp/vjp and ain/aout
                 )
 
     bases = (Primitive,)
 
-    primitive = type(operator.__name__ + '-' + func,
+    primitive = type(obj.prototype.__name__ + '-' + func,
             bases,
             members
             )
