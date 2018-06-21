@@ -138,7 +138,7 @@ def test_model_attr():
     with Builder() as m:
         a, b = m.input('a', 'b')
         d, = add(x1=b, x2=1)
-        t1 = add(x1=a, x2=b.size)
+        t1 = add(x1=a, x2=b.eval(lambda b: b.size))
         m.output(c=t1)
 
     init = dict(a=2, b=numpy.array([2,]))

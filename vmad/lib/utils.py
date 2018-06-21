@@ -5,9 +5,22 @@
 """
 
 from vmad.core.operator import operator
+
 class special:
     def vjp(self): return 0
-    def jvp(self, *args, **kwargs): return
+    def jvp(self): return
+
+@operator
+class eval(special):
+    ain  = 'x'
+    aout = 'y'
+
+    def apl(self, x, function):
+        """ Evaluates a function on the symbol x at run time """
+        return dict(y=function(x))
+
+    def vjp(self): return 0
+    def jvp(self): return 0
 
 @operator
 class watchpoint(special):
@@ -26,6 +39,7 @@ class watchpoint(special):
     def apl(self, x, monitor=print):
         monitor(x)
         return dict(y = x)
+
 
 @operator
 class assert_isinstance(special):

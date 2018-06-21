@@ -37,17 +37,9 @@ class BaseSymbol(object):
     def _has_reference(self):
         return len(self._references) > 0
 
-    def __call__(self, *args, **kwargs):
-        return CallSymbol(self, args, kwargs)
-
-    def __getitem__(self, index):
-        return GetItemSymbol(self, index)
-
-    def __getattr__(self, attrname):
-        # must be an internal attribute, do not defer it to computing time.
-        if attrname.startswith('_'):
-            raise AttributeError
-        return AttrSymbol(self, attrname)
+    def eval(self, function):
+        from vmad.lib.utils import eval
+        return eval(self, function)
 
 class Ref(object):
     """

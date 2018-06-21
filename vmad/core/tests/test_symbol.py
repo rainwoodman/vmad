@@ -2,6 +2,14 @@ from vmad.core.symbol import Symbol
 from vmad.core.operator import operator
 from vmad import Builder
 
+def test_symbol_eval():
+    with Builder() as m:
+        a = m.input('a')
+        m.output(b=a.eval(lambda a: len(a)))
+
+    m.compute('b', init=dict(a=[1, 2, 3]))
+    m.compute_with_vjp(init=dict(a=[1, 2, 3]), v=dict(_b=1.0))
+    m.compute_with_jvp(['b'], init=dict(a=[1, 2, 3]), v=dict(a_=1.0))
 
 def test_subclass_symbol():
 
