@@ -6,7 +6,7 @@ import pytest
 from vmad.lib import linalg
 
 def test_operator_watchpoint():
-    from vmad.lib.utils import watchpoint
+    from vmad.core.stdlib import watchpoint
     foo = [0]
     def monitor(x):
         foo[0] = 1
@@ -38,7 +38,7 @@ def test_operator_watchpoint():
 
 
 def test_operator_assert_isinstance():
-    from vmad.lib.utils import assert_isinstance
+    from vmad.core.stdlib import assert_isinstance
 
     with Builder() as m:
         a = m.input('a')
@@ -60,7 +60,7 @@ def test_operator_assert_isinstance():
         c = m.compute(vout='c', init=dict(a=1.09))
 
 def test_operator_assert_true():
-    from vmad.lib.utils import assert_true
+    from vmad.core.stdlib import assert_true
 
     with Builder() as m:
         a = m.input('a')

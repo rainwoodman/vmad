@@ -38,7 +38,7 @@ class BaseSymbol(object):
         return len(self._references) > 0
 
     def eval(self, function):
-        from vmad.lib.utils import eval
+        from vmad.core.stdlib import eval
         return eval(self, function)
 
 class Ref(object):

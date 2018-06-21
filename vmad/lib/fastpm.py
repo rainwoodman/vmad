@@ -326,7 +326,7 @@ class gravity:
     aout = [ ('f', '*')]
 
     def main(self, dx, q, pm):
-        from vmad.lib.utils import watchpoint
+        from vmad.core.stdlib import watchpoint
         x = linalg.add(dx, q)
         layout = decompose(x, pm)
 
