@@ -44,7 +44,7 @@ class Context(dict):
     def result_used(self, node):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
-        if isinstance(node, terminal._apl):
+        if node.primitive is terminal._apl:
             return True
 
         for argname, var in node.varout.items():
@@ -72,7 +72,7 @@ class Context(dict):
             if self.result_used(node):
                 self.execute(node, tape)
 
-            if isinstance(node, terminal._apl):
+            if node.primitive is terminal._apl:
                 for argname, var in node.varout.items():
                     r[var._name] = self[var._name]
 
@@ -101,7 +101,7 @@ class Context(dict):
 
         # add the hyper arguments used by the impl
         for argname, value in node.hyper_args.items():
-            if argname in node.argnames:
+            if argname in node.primitive.argnames:
                 kwargs[argname] = value
 
         if _raise_internal_errors:

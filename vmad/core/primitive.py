@@ -2,21 +2,30 @@ import weakref
 import inspect
 
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
-from .symbol import BaseSymbol, Symbol, Literal, List, assymbol
+from .node import Node
 
-# special object to represent the primitive itself in varout.
-# to avoid circular references.
-class SELF: pass
-
-class Primitive(Symbol):
+class Primitive:
     """ Primitives are building blocks of models.
 
-        Instantiation of a primitive creates a node on a model.
+        Calling a primitive creates a node on a model.
 
-        This is the base class for all operators. Primitive classes are generated
-        and attached to the operators classes via the `operator` decorator.
+        A primitive object for an operator is generated
+        and attached to the operators object via the `operator` decorator.
 
     """
+
+    def __init__(self, func, opr):
+        self.name = opr.prototype.__name__ + '-' + func
+        self.operator = opr
+        # a few others are created in make_primitive
+
+    def _check_primitive_class(self):
+        # assert the primitive is properly defined.
+        for attr in ['ain', 'aout', 'impl', 'func', 'argnames', 'operator', 'record_impl']:
+            if not hasattr(self, attr):
+                raise BrokenPrimitive("primitive class attribute '%s' is not defined" % attr)
+
+
     # Primitive a subclass of Symbol. When there is a single
     # return value, it behaves like an usual Symbol.
 
@@ -25,60 +34,47 @@ class Primitive(Symbol):
     # and must be unpacked. A strange error (during resolving) is raised if not
     # unpacked.
 
-    def __init__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """ Creating a node and append it to the model's execution graph
 
             The model is inferred from the input arguments
         """
+        from .symbol import Symbol, assymbol
         from .model import Model
+
+        self._check_primitive_class()
 
         # remember the frame info
         previous_frame = inspect.currentframe().f_back
-        self._frameinfo = inspect.getframeinfo(previous_frame)
+        _frameinfo = inspect.getframeinfo(previous_frame)
 
-        kls = type(self)
+        node = Node(self, _frameinfo)
 
-        _check_primitive_class(kls)
-
-        self._varin = {}
-        self._varout = {}
-        self.hyper_args = {}
-
-        kwargs = _parse_args(kls, args, kwargs)
+        kwargs = self._parse_args(args, kwargs)
 
         # gather models
-        models = _walk_models(kls, kwargs)
+        models = self._walk_models(kwargs)
         # consolidate
         model = Model.consolidate(models)
         # replace models mentioned in kwargs
-        _walk_models(kls, kwargs, reset=model)
+        self._walk_models(kwargs, reset=model)
 
-        basename = model.unique_name(kls.__name__)
+        basename = model.unique_name(self.name)
 
-        for argname in kls.ain:
+        for argname in self.ain:
             var = assymbol(kwargs[argname])
 
             # checking symbol references
             #print(basename, var.name, id(var), id(model.get(var.name)))
 
-            ref = var._add_reference(self)
-            self._varin[argname] = ref
+            ref = var._add_reference(node)
+            node._varin[argname] = ref
 
-        is_scalar_primitive = False
-        for argname in kls.aout:
+        for argname in self.aout:
             if not argname in kwargs:
                 # if a name is not supplied, generate a name
                 varname = basename + '-' + argname
-                if len(kls.aout) == 1:
-                    # this is a scalar return value function
-                    # the primitive it self is the new symbol
-                    # FIXME: consider converting primitives to
-                    # functions to allow actually creating symbols
-                    var = SELF
-                    Symbol.__init__(self, varname, model=model)
-                    is_scalar_primitive = True
-                else:
-                    var = Symbol(varname, model=model)
+                var = Symbol(varname, model=model)
             else:
                 var = kwargs[argname]
                 var = assymbol(kwargs[argname])
@@ -88,105 +84,61 @@ class Primitive(Symbol):
                 # so we die here
                 _check_var_references(var)
 
-            self._varout[argname] = var
+            node._varout[argname] = var
 
         # record all `hyper` arguments that do not go into derivatives.
         for k, v in kwargs.items():
-            if k not in kls.ain and k not in kls.aout:
-                self.hyper_args[k] = v
+            if k not in self.ain and k not in self.aout:
+                node.hyper_args[k] = v
 
-        if not is_scalar_primitive:
-            Symbol.__init__(self, basename, model=model)
+        # append node to the model.
+        model.append(node)
 
-        # append self to the model.
-        model.append(self)
+        # return the output symbols
+        vout = [node.varout[argname] for argname in self.aout]
+        if len(self.aout) == 1:
+            return vout[0]
+        else:
+            return vout
 
-    @property
-    def varin(self):
-        return self._varin
-
-    @property
-    def varout(self):
-        d = {}
-        # replace SELF with self.
-        for key, value in self._varout.items():
-            if value == SELF:
-                value = self
-            d[key] = value
-        return d
-
-    def __iter__(self):
-        """ for unpacking the varout during model construction, e.g.
-
-            .. code::
-
-                a, b, c = split_three_way(x)
-
+    def _parse_args(self, args, kwargs):
+        """ map arguments give as args and kwargs to argnames.
         """
-        for argname in type(self).aout:
-            symbol = self._varout[argname]
-            if symbol is SELF:
-                symbol = self
-            yield symbol
+        kwargs = kwargs.copy() # will modify
 
-    def __repr__(self):
-        #return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self._varout, self._frameinfo[0], self._frameinfo[1])
-        return "%s" % self._name
+        # first attempt to map args into kwargs
+        if len(args) > len(self.argnames):
+            raise BadArgument("Argument list longer than total number of args")
 
-    def call(self, **kwargs):
-        """ call the implementation function of the primitive;
+        for argname, arg in zip(self.argnames, args):
+            if argname in kwargs:
+                raise BadArgument("argument %s already provided as keyword" % argname)
 
-            invoked by the Context
+            kwargs[argname] = arg
 
-            kwargs: the arguments that goes into the impl function
+        return kwargs
 
-            Returns: dict, result for each varout.
-        """
-        r = type(self).impl(self, **kwargs)
+    def _walk_models(self, kwargs, reset=None):
+        models = set()
 
-        # allow returning without using a dict
-        # if there is only a single output argument
-        if not isinstance(r, dict):
-            if len(self.varout) == 1:
-                argname = next(iter(self.varout.keys()))
-                r = {argname:r}
-            if len(self.varout) == 0:
-                if r is not None:
-                    raise ValueError("Return value of the primitive is not None, while no output arguments are defined")
-                r = {}
-        return r
+        for argname in self.ain:
+            if not argname in kwargs: raise MissingArgument("input argument '%s' not provided" % argname)
 
-    def record(self, kwargs, r):
-        """ generate the kwargs that goes into the tape;
-            default is to record the entire kwargs.
+            var = kwargs[argname]
+            models = models.union(_infer_models(var, reset=reset))
 
-            Sometimes we do not need the entire kwargs; e.g.
-            for linear operators we only need enough information to create
-            the output array of the back-prop gradient
-            but we don't need the actual parameters.
+        for argname in self.aout:
+            if argname not in kwargs: continue
+            var = kwargs[argname]
 
-            invoked by the Context.
+            models = models.union(_infer_models(var, reset=reset))
 
-            kwargs: the arguments that goes into the impl function
-            r : the result of the calculation operator apl, dict from argname to value
-                see above.
-
-            Returns: dict that goes into the tape, will be available in vjp and jpv
-        """
-        # merge the two dictionaries, prioritizing kwargs (inputs).
-        d = {}
-        d.update(r)
-        d.update(kwargs)
-        return type(self).record_impl(self, **d)
+        return models
 
 
-def _check_primitive_class(kls):
-    # assert the primitive is properly defined.
-    for attr in ['ain', 'aout', 'impl', 'func', 'argnames', 'operator', 'record_impl']:
-        if not hasattr(kls, attr):
-            raise BrokenPrimitive("primitive class attribute '%s' is not defined" % attr)
 
 def _check_var_references(var):
+    from .symbol import List
     if isinstance(var, List):
         for v in var:
             _check_var_references(v)
@@ -195,42 +147,9 @@ def _check_var_references(var):
     if var._has_reference():
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
-def _parse_args(kls, args, kwargs):
-    """ map arguments give as args and kwargs to argnames.
-    """
-    kwargs = kwargs.copy() # will modify
-
-    # first attempt to map args into kwargs
-    if len(args) > len(kls.argnames):
-        raise BadArgument("Argument list longer than total number of args")
-
-    for argname, arg in zip(kls.argnames, args):
-        if argname in kwargs:
-            raise BadArgument("argument %s already provided as keyword" % argname)
-
-        kwargs[argname] = arg
-
-    return kwargs
-
-def _walk_models(kls, kwargs, reset=None):
-    models = set()
-
-    for argname in kls.ain:
-        if not argname in kwargs: raise MissingArgument("input argument '%s' not provided" % argname)
-
-        var = kwargs[argname]
-        models = models.union(_infer_models(var, reset=reset))
-
-    for argname in kls.aout:
-        if argname not in kwargs: continue
-        var = kwargs[argname]
-
-        models = models.union(_infer_models(var, reset=reset))
-
-    return models
-
-
 def _infer_models(var, reset=None):
+    from .symbol import Symbol
+
     if isinstance(var, Symbol):
         if reset is not None:
             reset.anchor(var)

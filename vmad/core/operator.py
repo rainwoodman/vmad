@@ -61,7 +61,7 @@ def find_primitive_type(node, func):
     # we will only do this on the apl primitives
     # because otherwise this is undefined
     # the algebra of autodiff in vmad3 is explicitly not closed!
-    assert isinstance(node, type(node).operator._apl)
+    assert node.primitive is node.operator._apl
 
     assert func in ['vjp', 'jvp', 'apl']
 
@@ -149,25 +149,25 @@ def operator(kls):
     else:
         record_impl = record_copy_autodiff
 
-    obj = Operator(kls)
+    opr = Operator(kls)
 
-    obj.ain = _to_ordereddict(kls.ain)
-    obj.aout = _to_ordereddict(kls.aout)
+    opr.ain = _to_ordereddict(kls.ain)
+    opr.aout = _to_ordereddict(kls.aout)
 
-    obj._apl = _make_primitive(obj, 'apl', unbound(kls.apl),
+    opr._apl = _make_primitive(opr, 'apl', unbound(kls.apl),
         record_impl=record_impl)
 
     if hasattr(kls, 'vjp'):
-        obj._vjp = _make_primitive(obj, 'vjp', unbound(kls.vjp))
+        opr._vjp = _make_primitive(opr, 'vjp', unbound(kls.vjp))
     else:
-        obj._vjp = EmptyPrimitive
+        opr._vjp = EmptyPrimitive
 
     if hasattr(kls, 'jvp'):
-        obj._jvp = _make_primitive(obj, 'jvp', unbound(kls.jvp))
+        opr._jvp = _make_primitive(opr, 'jvp', unbound(kls.jvp))
     else:
-        obj._jvp = EmptyPrimitive
+        opr._jvp = EmptyPrimitive
 
-    return obj
+    return opr
 
 def zerobypass(impl):
     def zerobypassimpl(self, **kwargs):
@@ -181,7 +181,7 @@ def zerobypass(impl):
         return impl(self, **kwargs)
     return zerobypassimpl
 
-def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all):
+def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all):
     """ create primitives for the operator.
 
         This is used to define a primitive based on the unbound method
@@ -192,50 +192,42 @@ def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all)
 
     assert func in ('apl', 'vjp', 'jvp')
 
-
     aout = {}
     ain = {}
     if argnames is None:
         argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
 
     if func == 'apl':
-        ain = obj.ain
-        aout = obj.aout
+        ain = opr.ain
+        aout = opr.aout
     elif func == 'vjp' : # in and out are prefixed.
-        for arg in obj.ain:
-            aout['_' + arg] = obj.ain[arg]
+        for arg in opr.ain:
+            aout['_' + arg] = opr.ain[arg]
 
-        for arg in obj.aout:
+        for arg in opr.aout:
             # skip unused input vector args
             if '_' + arg not in argnames: continue
-            ain['_' + arg] = obj.aout[arg]
+            ain['_' + arg] = opr.aout[arg]
         impl = zerobypass(impl)
 
     elif func == 'jvp' : # in and out are prefixed.
-        for arg in obj.ain:
+        for arg in opr.ain:
             # skip unused input vector args
             if arg + '_' not in argnames: continue
-            ain[arg + '_'] = obj.ain[arg]
+            ain[arg + '_'] = opr.ain[arg]
 
-        for arg in obj.aout:
-            aout[arg + '_'] = obj.aout[arg]
+        for arg in opr.aout:
+            aout[arg + '_'] = opr.aout[arg]
         impl = zerobypass(impl)
 
-    members =  dict(
-                impl     = impl,
-                record_impl     = record_impl,
-                func     = func,
-                ain      = ain,
-                aout     = aout,
-                argnames = argnames,
-                operator = obj, # need a reference to the operator object to look up jvp/vjp and ain/aout
-                )
+    primitive = Primitive(func, opr)
 
-    bases = (Primitive,)
+    primitive.impl     = impl
+    primitive.record_impl     = record_impl
+    primitive.func     = func
+    primitive.ain      = ain
+    primitive.aout     = aout
+    primitive.argnames = argnames
 
-    primitive = type(obj.prototype.__name__ + '-' + func,
-            bases,
-            members
-            )
     return primitive
 
