@@ -1,11 +1,21 @@
 from __future__ import print_function
 
 from vmad.core.model import Builder
+from vmad.core.autooperator import autooperator
+from vmad.lib.linalg import add
+
+@autooperator
+class example:
+    ain  = {'x': '*'}
+    aout = {'y': '*'}
+
+    # must take both extra parameters and input parameters
+    def main(self, x, n):
+        for i in range(n):
+            x = add(x1=x, x2=x)
+        return dict(y=x)
 
 def test_model_nested():
-
-
-    from vmad.core.autooperator import example
 
     with Builder() as m:
         a = m.input('a')
@@ -29,16 +39,12 @@ def test_model_nested():
 
 def test_model_nested_build():
 
-    from vmad.core.autooperator import example
-
     m = example.build(n=2)
     init = dict(x = 1.0)
     y, tape = m.compute(init=init, vout='y', monitor=print, return_tape=True)
     assert y == 4.0
 
 def test_autooperator_bind():
-
-    from vmad.core.autooperator import example
 
     op1 = example.bind(n=2)
     m = example.build(n=2)
@@ -65,13 +71,9 @@ def test_autooperator_bind():
 
 def test_autooperator_compute():
 
-    from vmad.core.autooperator import example
-
     y = example.build(n=2).compute(vout='y', init=dict(x=1))
 
 def test_autooperator_precompute():
-
-    from vmad.core.autooperator import example
 
     op1 = example.precompute(n=2, x=1)
     m = example.build(n=2)

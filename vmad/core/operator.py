@@ -10,6 +10,8 @@ from __future__ import print_function
     you only need to define a model and the ain, aout
 
 """
+class EmptyPrimitive:
+    argnames = []
 
 class Operator(object):
     def __init__(self, prototype):
@@ -158,12 +160,12 @@ def operator(kls):
     if hasattr(kls, 'vjp'):
         obj._vjp = _make_primitive(obj, 'vjp', unbound(kls.vjp))
     else:
-        obj._vjp = None
+        obj._vjp = EmptyPrimitive
 
     if hasattr(kls, 'jvp'):
         obj._jvp = _make_primitive(obj, 'jvp', unbound(kls.jvp))
     else:
-        obj._jvp = None
+        obj._jvp = EmptyPrimitive
 
     return obj
 
@@ -236,39 +238,4 @@ def _make_primitive(obj, func, impl, argnames=None, record_impl=record_copy_all)
             members
             )
     return primitive
-
-# special operator used for partial gradient summation
-@operator
-class add:
-    ain  = {'x1': '*',
-            'x2': '*',
-           }
-    aout = {'y': '*'}
-
-    def apl(self, x1, x2):
-        if x2 is 0: return dict(y = x1)
-        if x1 is 0: return dict(y = x2)
-        return dict(y = x1 + x2)
-
-    def vjp(self, _y):
-        return dict(_x1 = _y, _x2 = _y)
-
-    def jvp(self, x1_, x2_):
-        if x2_ is 0: return dict(y_ = x1_)
-        if x1_ is 0: return dict(y_ = x2_)
-        return dict(y_ = x1_ + x2_)
-
-# special operator for marking an output
-@operator
-class terminal:
-    ain  = {'x': '*'}
-    aout = {'y': '*'}
-
-    def apl(self, x):
-        return dict(y=x)
-    def vjp(self, _y):
-        return dict(_x=_y)
-    def jvp(self, x_):
-        return dict(y_=x_)
-
 

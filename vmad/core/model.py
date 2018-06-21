@@ -1,8 +1,9 @@
 from .symbol import Symbol, Literal
-from .operator import terminal
 from .error import DuplicatedOutput, InferError
 from .context import Context
 from .tape import Tape
+
+from .stdlib import terminal
 
 from collections import OrderedDict
 import uuid

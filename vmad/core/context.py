@@ -1,4 +1,4 @@
-from .operator import terminal
+from .stdlib import terminal
 from .error import UnexpectedOutput, makeExecutionError, ModelError
 
 _raise_internal_errors = True

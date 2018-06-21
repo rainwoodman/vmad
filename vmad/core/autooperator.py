@@ -163,19 +163,3 @@ def _compute(obj, kwargs):
 
 
 
-@autooperator
-class example:
-    ain  = {'x': '*'}
-    aout = {'y': '*'}
-
-    # must take both extra parameters and input parameters
-    def main(self, x, n):
-        from .operator import add
-
-        for i in range(n):
-            x = add(x1=x, x2=x)
-        return dict(y=x)
-
-    @classmethod # must be class method or self will be strange.
-    def evaluate(self, x, n):
-        pass

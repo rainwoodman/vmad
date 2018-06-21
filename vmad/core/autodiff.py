@@ -1,8 +1,7 @@
 from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List
 from .model import Model
-from .operator import terminal, add
+from .stdlib import terminal, add_partial_gradient
 from .operator import find_primitive_type
-
 def prepare_opr_kwargs(record, model):
     """ generate a first guess of kwargs based on the record.
 
@@ -60,7 +59,7 @@ def connect_output_vjp(ref, model):
         # because we intent to overwrite it.
         var_f2 = Symbol(var._vjp_name, model=model)
 
-        add(x1=var_f, x2=var_p, y=var_f2)
+        add_partial_gradient(x1=var_f, x2=var_p, y=var_f2)
 
 def create_output_jvp(var, model):
     if isinstance(var, List):

@@ -1,5 +1,5 @@
 from vmad.core.model import Builder
-from vmad.core.operator import add
+from vmad.core.stdlib import add_partial_gradient as add
 import pytest
 
 def test_error_infer():

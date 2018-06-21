@@ -1,7 +1,7 @@
 from __future__ import print_function
 from pprint import pprint
-from vmad.core.operator import add
 from vmad.lib.linalg import mul
+from vmad.lib.linalg import add
 from vmad.core.model import Builder
 import pytest
 
