@@ -16,8 +16,20 @@ class eval(special):
     aout = 'y'
 
     def apl(self, x, function):
-        """ Evaluates a function on the symbol x at run time """
-        return dict(y=function(x))
+        """ Evaluates a function on the symbol x at run time.
+
+            Parameters
+            ----------
+            function : callable or string.
+                if a string is provided for the evaluation, x is the variable.
+                if a function is provided, it shall be function(x)
+
+        """
+        if hasattr(function, '__call__'):
+            return dict(y=function(x))
+        else:
+            from builtins import eval
+            return dict(y=eval(function, dict(x=x)))
 
     def vjp(self): return 0
     def jvp(self): return 0

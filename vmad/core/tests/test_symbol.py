@@ -5,11 +5,14 @@ from vmad import Builder
 def test_symbol_eval():
     with Builder() as m:
         a = m.input('a')
-        m.output(b=a.eval(lambda a: len(a)))
+        m.output(
+                b=a.eval(lambda a: len(a)),
+                c=a.eval("len(x)"),
+                )
 
-    m.compute('b', init=dict(a=[1, 2, 3]))
-    m.compute_with_vjp(init=dict(a=[1, 2, 3]), v=dict(_b=1.0))
-    m.compute_with_jvp(['b'], init=dict(a=[1, 2, 3]), v=dict(a_=1.0))
+    m.compute(['b', 'c'], init=dict(a=[1, 2, 3]))
+    m.compute_with_vjp(init=dict(a=[1, 2, 3]), v=dict(_b=1.0, _c=1.0))
+    m.compute_with_jvp(['b', 'c'], init=dict(a=[1, 2, 3]), v=dict(a_=1.0))
 
 def test_subclass_symbol():
 
