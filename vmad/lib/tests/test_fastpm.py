@@ -23,7 +23,7 @@ def create_bases(x):
         return [i for i in bases]
 
 class Test_r2c_c2r(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -48,7 +48,7 @@ def transfer(k):
     return r
 
 class Test_r2c_transfer_c2r(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -66,7 +66,7 @@ class Test_r2c_transfer_c2r(BaseScalarTest):
 #        print(self.y_)
 
 class Test_cdot(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -84,7 +84,7 @@ class Test_cdot(BaseScalarTest):
 #        print(self.y_)
 
 class Test_paint_x(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -102,7 +102,7 @@ class Test_paint_x(BaseScalarTest):
         return y
 
 class Test_decompose_paint_x(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -121,7 +121,7 @@ class Test_decompose_paint_x(BaseScalarTest):
         return y
 
 class Test_decompose_exchange(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -141,7 +141,7 @@ class Test_decompose_exchange(BaseScalarTest):
         return y
 
 class Test_paint_mass(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -159,7 +159,7 @@ class Test_paint_mass(BaseScalarTest):
         return y
 
 class Test_readout_x(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -176,7 +176,7 @@ class Test_readout_x(BaseScalarTest):
         return y
 
 class Test_readout_mesh(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -193,7 +193,7 @@ class Test_readout_mesh(BaseScalarTest):
         return y
 
 class Test_lpt1(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -210,7 +210,7 @@ class Test_lpt1(BaseScalarTest):
         return dx1
 
 class Test_lpt2src(BaseScalarTest):
-    to_scalar = fastpm.to_scalar
+    to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -225,7 +225,7 @@ class Test_lpt2src(BaseScalarTest):
         return fastpm.lpt2src(fastpm.r2c(x), pm=self.pm)
 
 class Test_lpt(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
@@ -242,7 +242,7 @@ class Test_lpt(BaseScalarTest):
         return linalg.add(dx1, dx2)
 
 class Test_nbody(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 

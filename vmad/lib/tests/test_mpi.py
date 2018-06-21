@@ -8,7 +8,7 @@ from vmad.testing import BaseScalarTest
 from mpi4py import MPI
 
 class Test_allreduce(BaseScalarTest):
-    to_scalar = linalg.to_scalar
+    to_scalar = staticmethod(linalg.to_scalar)
 
     comm = MPI.COMM_WORLD
 
