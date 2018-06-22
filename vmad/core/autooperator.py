@@ -43,13 +43,21 @@ class AutoOperator(Operator):
 
         m = _build(obj, hyperargs)
 
+        # remove those args already defined
+        argnames = tuple([
+                argname for argname in obj._apl.argnames if argname not in hyperargs
+                ])
+
         # create a new operator, because we need new primitives that points to this operator.
-        obj = autooperator(obj.prototype)
+        obj = autooperator(obj.prototype, argnames=argnames)
         obj.__bound_model__ = m
         obj.hyperargs = hyperargs
+        print('hahaha', argnames)
+        obj.argnames = argnames
+
         return obj
 
-def autooperator(kls):
+def autooperator(kls, argnames=None):
     """ Create an operator with automated differentiation.
 
         ain : input arguments
@@ -68,7 +76,8 @@ def autooperator(kls):
     impl = unbound(kls.main)
 
     # use the argnames of main function
-    argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
+    if argnames is None:
+        argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
     argnames_vjp = list(argnames)
     argnames_jvp = list(argnames)
 
@@ -79,7 +88,6 @@ def autooperator(kls):
 
     obj.ain = _to_ordereddict(kls.ain)
     obj.aout = _to_ordereddict(kls.aout)
-    #obj.argnames = argnames
 
     # add v arguments
     for argname in obj.aout:
