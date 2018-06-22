@@ -39,7 +39,7 @@ class Primitive:
 
             The model is inferred from the input arguments
         """
-        from .symbol import Symbol, assymbol
+        from .symbol import Symbol, assymbol, BaseSymbol
         from .model import Model
 
         self._check_primitive_class()
@@ -87,9 +87,18 @@ class Primitive:
             node._varout[argname] = var
 
         # record all `hyper` arguments that do not go into derivatives.
-        for k, v in kwargs.items():
-            if k not in self.ain and k not in self.aout:
-                node.hyper_args[k] = v
+        for argname in self.argnames:
+            if argname in self.ain or argname in self.aout: continue
+            # if it is not provided (e.g. default value defined in the prototype is used)
+            if argname not in kwargs: continue
+
+            v = kwargs[argname]
+            if isinstance(v, BaseSymbol):
+                raise BadArgument("argument %s is declared as a hyper argument, but a symbol '%s' is passed in."
+                    % (argname, v))
+
+            node.hyper_args[argname] = v
+
 
         # append node to the model.
         model.append(node)
@@ -104,6 +113,7 @@ class Primitive:
     def _parse_args(self, args, kwargs):
         """ map arguments give as args and kwargs to argnames.
         """
+
         kwargs = kwargs.copy() # will modify
 
         # first attempt to map args into kwargs

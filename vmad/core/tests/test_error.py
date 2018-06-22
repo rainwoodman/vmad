@@ -1,5 +1,5 @@
 from vmad.core.model import Builder
-from vmad.core.stdlib import add_partial_gradient as add
+from vmad.core.stdlib import add
 import pytest
 
 def test_error_infer():
@@ -24,6 +24,21 @@ def test_error_bad_arg2():
         a = m.input('a')
         with pytest.raises(BadArgument):
             add(1, x1=1, x2=2)
+
+def test_error_bad_arg_symbol_as_hyper():
+    from vmad.core.error import BadArgument
+    from vmad.core.operator import operator
+    @operator
+    class myop:
+        ain = 'x'
+        aout = 'y'
+        def apl(self, x, n):
+            return x
+
+    with Builder() as m:
+        a = m.input('a')
+        with pytest.raises(BadArgument):
+            myop(a, a)
 
 def test_error_missing():
     from vmad.core.error import MissingArgument

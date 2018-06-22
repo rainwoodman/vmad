@@ -101,8 +101,7 @@ class Context(dict):
 
         # add the hyper arguments used by the impl
         for argname, value in node.hyper_args.items():
-            if argname in node.primitive.argnames:
-                kwargs[argname] = value
+            kwargs[argname] = value
 
         if _raise_internal_errors:
             r = node.call(**kwargs)

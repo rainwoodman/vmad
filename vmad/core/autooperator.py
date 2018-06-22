@@ -52,7 +52,6 @@ class AutoOperator(Operator):
         obj = autooperator(obj.prototype, argnames=argnames)
         obj.__bound_model__ = m
         obj.hyperargs = hyperargs
-        print('hahaha', argnames)
         obj.argnames = argnames
 
         return obj

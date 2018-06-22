@@ -20,6 +20,7 @@ setup(name="vmad", version=find_version("vmad/version.py"),
       packages=[
                 "vmad", "vmad.tests",
                 "vmad.core", "vmad.core.tests",
+                "vmad.core.stdlib",
                 "vmad.lib", "vmad.lib.tests",
                 "vmad.contrib",
         ],

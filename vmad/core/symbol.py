@@ -1,6 +1,8 @@
 from .error import ResolveError, ModelError
 import weakref
 
+from . import stdlib
+
 class BaseSymbol(object):
     """ A symbol for building models.
 
@@ -39,8 +41,30 @@ class BaseSymbol(object):
 
     def eval(self, function):
         """ Evaluates an expression or a function on the symbol. see vmad.core.stdlib.eval. """
-        from vmad.core.stdlib import eval
-        return eval(self, function)
+        return stdlib.eval(self, function)
+
+    def __add__(self, other): return stdlib.add(self, other)
+    def __radd__(self, other): return stdlib.add(other, self)
+    def __sub__(self, other): return stdlib.sub(self, other)
+    def __rsub__(self, other): return stdlib.add(other, self)
+    def __mul__(self, other): return stdlib.mul(self, other)
+    def __rmul__(self, other): return stdlib.mul(other, self)
+    def __truediv__(self, other): return stdlib.div(self, other)
+    def __rtruediv__(self, other): return stdlib.div(other, self)
+    def __pow__(self, other, modulo=None):
+        if modulo is not None:
+            raise ValueError("pow with modulo is not supported")
+        return stdlib.pow(self, other)
+    def __rpow__(self, other):
+        raise
+        return stdlib.pow(other, self)
+
+    def __floordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
+    def __rfloordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
+
+    def __neg__(self): return stdlib.neg(self)
+    def __pos__(self): return stdlib.pos(self)
+    def __abs__(self): return stdlib.abs(self)
 
 class Ref(object):
     """

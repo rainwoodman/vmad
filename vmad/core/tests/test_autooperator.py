@@ -81,7 +81,7 @@ def test_autooperator_precompute():
     with Builder() as m:
         a = m.input('a')
         b = example(a, 2)
-        c = op1(a)
+        c = op1(a, n=2)
         m.output(b=b, c=c)
 
     init = dict(a = 1.0)

@@ -14,6 +14,16 @@ def test_symbol_eval():
     m.compute_with_vjp(init=dict(a=[1, 2, 3]), v=dict(_b=1.0, _c=1.0))
     m.compute_with_jvp(['b', 'c'], init=dict(a=[1, 2, 3]), v=dict(a_=1.0))
 
+def test_symbol_add():
+    with Builder() as m:
+        a, b = m.input('a', 'b')
+        m.output(
+                c = (a + b) * b / b ** 2
+                )
+
+    c = m.compute('c', init=dict(a=2, b=3))
+    assert round(c, 4) == round((2 + 3) * 3 / 3 ** 2, 4)
+
 def test_subclass_symbol():
 
     class MySymbol(Symbol):
