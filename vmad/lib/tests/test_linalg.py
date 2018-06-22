@@ -151,15 +151,3 @@ class Test_sumat(LinalgScalarTest):
 
         return linalg.sumat(x, at=self.at, axis=0)
 
-def test_linalg_interface():
-    from vmad.lib.linalg import LinalgSymbol
-    with Builder() as m:
-        a, b = m.input(LinalgSymbol('a'), LinalgSymbol('b'))
-        c = a + b
-        d = a * abs(b)
-        m.output(c=c, d=d)
-
-    c, d = m.compute(('c', 'd'), init=dict(a=2.0, b=-3.0))
-    assert c == -1.0
-    assert d == 6.0
-

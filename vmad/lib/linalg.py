@@ -4,53 +4,9 @@ from vmad.core.symbol import Symbol
 
 import numpy
 
-class LinalgSymbol(Symbol):
-    """ mixing-in that allows linear algrebra operations on a symbol """
-    def __mul__(self, other):
-        return mul(self, other)
-
-    def __add__(self, other):
-        return add(self, other)
-
-    def __sub__(self, other):
-        n = mul(other, -1)
-        return add(self, n)
-
-    def __div__(self, other):
-        n = pow(other, -1)
-        return mul(self, n)
-
-    def __pow__(self, n):
-        return pow(self, n)
-
-    def __abs__(self):
-        return abs(self)
-
-
-@operator
-class mul:
-    ain = {'x1' : '*',
-           'x2' : '*',
-          }
-    aout = {'y' : '*'}
-
-    def apl(self, x1, x2):
-        return dict(y = x1 * x2)
-
-    def rcd(self, x1, x2, y):
-        # the other value is not needed, 0 should work.
-        if isinstance(self.varin['x1'].symbol, Literal):
-            x2 = 0
-        if isinstance(self.varin['x2'].symbol, Literal):
-            x1 = 0
-        return dict(x1=x1, x2=x2)
-
-    def vjp(self, _y, x1, x2):
-        return dict(_x1 = _y * x2,
-                    _x2 = _y * x1)
-
-    def jvp(self, x1_, x2_, x1, x2):
-        return dict(y_ = x1_* x2 + x1 * x2_)
+# a few commonly used operators are expected to be
+# compatible with the python ones.
+from vmad.core.stdlib import mul, add, abs, pow
 
 @operator
 class matmul:
@@ -113,22 +69,6 @@ class to_scalar:
         return dict(y_ = (x_ * numpy.conj(x) + numpy.conj(x_) * x).sum())
 
 @operator
-class add:
-    ain  = {'x1': '*',
-            'x2': '*',
-           }
-    aout = {'y': '*'}
-
-    def apl(self, x1, x2):
-        return dict(y = x1 + x2)
-
-    def vjp(self, _y):
-        return dict(_x1 = _y, _x2 = _y)
-
-    def jvp(self, x1_, x2_):
-        return dict(y_ = x1_ + x2_)
-
-@operator
 class log:
     ain = {'x' : '*',
           }
@@ -142,38 +82,6 @@ class log:
 
     def jvp(self, x_, x):
         return dict(y_ = x_ * 1. / x)
-
-@operator
-class abs:
-    ain = {'x' : '*',
-          }
-    aout = {'y' : '*'}
-
-    def apl(self, x):
-        return dict(y=numpy.abs(x))
-
-    def vjp(self, _y, x):
-        return dict(_x = _y * numpy.sign(x))
-
-    def jvp(self, x_, x):
-        return dict(y_ = x_ * numpy.sign(x))
-
-@operator
-class pow:
-    ain = {'x' : '*',
-          }
-    aout = {'y' : '*'}
-
-    def apl(self, x, n):
-        return dict(y=x ** n)
-
-    def vjp(self, _y, x, n):
-        fac = x ** (n - 1) if n != 1 else 1
-        return dict(_x = n * _y * fac)
-
-    def jvp(self, x_, x, n):
-        fac = x ** (n - 1) if n != 1 else 1
-        return dict(y_ = n * x_ * fac)
 
 @operator
 class copy:

@@ -34,6 +34,8 @@ class pos(unary):
 @operator
 class abs(unary):
     def apl(self, x):
+        # function name was replaced
+        from builtins import abs
         return dict(y = abs(x))
 
     def vjp(self, _y, x):
