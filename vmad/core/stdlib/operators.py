@@ -12,7 +12,7 @@ class binary:
 @operator
 class neg(unary):
     def apl(self, x):
-        return dict(y = -x1)
+        return dict(y = -x)
 
     def vjp(self, _y):
         return dict(_x = -_y)
@@ -23,7 +23,7 @@ class neg(unary):
 @operator
 class pos(unary):
     def apl(self, x):
-        return dict(y = +x1)
+        return dict(y = +x)
 
     def vjp(self, _y):
         return dict(_x = +_y)
