@@ -246,21 +246,20 @@ class lpt2src:
 
         source = None
         for d in range(pm.ndim):
-            source1 = linalg.mul(Pii[D1[d]], Pii[D2[d]])
+            source1 = Pii[D1[d]] * Pii[D2[d]]
             if source is None:
                 source = source1
             else:
-                source = linalg.add(source, source1)
+                source = source + source1
 
         for d in range(pm.ndim):
             t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm))
             Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm))
             Pij1 = c2r(Pij1)
-            neg = linalg.mul(Pij1, -1)
-            source1 = linalg.mul(Pij1, neg)
-            source = linalg.add(source, source1)
+            source1 = - Pij1 * Pij1
+            source = source + source1
 
-        source = linalg.mul(source, 3.0/7 )
+        source = (3.0 / 7) * source
 
         return dict(rho_lpt2=source)
 
@@ -310,7 +309,11 @@ class gravity:
 
     def main(self, dx, q, pm):
         from vmad.core.stdlib import watchpoint
-        x = linalg.add(dx, q)
+        x = q + dx
+        #def w(q): print('q', q)
+        #watchpoint(x, w)
+        #watchpoint(x, lambda x: print('x', q))
+        #watchpoint(dx, lambda dx: print('dx', dx))
         layout = decompose(x, pm)
 
         xl = exchange(x, layout)
@@ -319,7 +322,7 @@ class gravity:
         # convert to 1 + delta
         fac = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q))
 
-        rho = linalg.mul(rho, fac)
+        rho = rho * fac
         rhok = r2c(rho)
 
         p = apply_transfer(rhok, fourier_space_laplace)
@@ -358,21 +361,21 @@ class leapfrog:
             ac = (ai * af) ** 0.5
 
             # kick
-            dp = linalg.mul(f, KickFactor(pt, ai, ai, ac) * 1.5 * Om0)
-            p = linalg.add(p, dp)
+            dp = f * (KickFactor(pt, ai, ai, ac) * 1.5 * Om0)
+            p = p + dp
 
             # drift
-            ddx = linalg.mul(p, DriftFactor(pt, ai, ac, af))
-            dx = linalg.add(dx, ddx)
+            ddx = p * DriftFactor(pt, ai, ac, af)
+            dx = dx + ddx
 
             # force
             f = gravity(dx, q, pm)
 
             # kick
-            dp = linalg.mul(f, KickFactor(pt, ac, af, af) * 1.5 * Om0)
-            p = linalg.add(p, dp)
+            dp = f * (KickFactor(pt, ac, af, af) * 1.5 * Om0)
+            p = p + dp
 
-        f = linalg.mul(f, 1.5 * Om0)
+        f = f * (1.5 * Om0)
         return dict(dx=dx, p=p, f=f)
 
 @autooperator
@@ -403,14 +406,14 @@ class nbody:
         f1 = pt.f1(a)
         f2 = pt.f2(a)
 
-        dx1 = linalg.mul(dx1, D1)
-        dx2 = linalg.mul(dx2, D2)
+        dx1 = dx1 * D1
+        dx2 = dx2 * D2
 
-        p1 = linalg.mul(dx1, a ** 2 * f1 * E)
-        p2 = linalg.mul(dx2, a ** 2 * f2 * E)
+        p1 = dx1 * (a ** 2 * f1 * E)
+        p2 = dx2 * (a ** 2 * f2 * E)
 
-        p = linalg.add(p1, p2)
-        dx = linalg.add(dx1, dx2)
+        p = p1 + p2
+        dx = dx1 + dx2
 
         dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
 

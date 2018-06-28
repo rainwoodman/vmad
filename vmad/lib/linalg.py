@@ -161,7 +161,7 @@ class sumat:
         if not (numpy.diff(at) >= 0).all():
             raise ValueError('at must be monotonically increasing')
 
-        y = numpy.add.reduceat(x, at, axis=axis)
+        y = numpy.add.reduceat(x, at, axis=axis, dtype='f8')
         return y
 
     def rcd(self, x, y, at, axis=0):
@@ -173,7 +173,7 @@ class sumat:
         return numpy.repeat(_y, N, axis=axis)
 
     def jvp(self, x_, at, axis):
-        return numpy.add.reduceat(x_, at, axis=axis)
+        return numpy.add.reduceat(x_, at, axis=axis, dtype='f8')
 
 @operator
 class sum:
@@ -181,7 +181,7 @@ class sum:
     aout = {'y': '*'}
 
     def apl(self, x, axis=None):
-        return dict(y = numpy.sum(x, axis=axis))
+        return dict(y = numpy.sum(x, axis=axis, dtype='f8'))
 
     def rcd(self, x, y, axis=None):
         return dict(xshape = numpy.shape(x), axis=axis)
@@ -199,5 +199,5 @@ class sum:
         return dict(_x = _x)
 
     def jvp(self, x_, xshape, axis):
-        return numpy.sum(x_, axis=axis)
+        return numpy.sum(x_, axis=axis, dtype='f8')
 
