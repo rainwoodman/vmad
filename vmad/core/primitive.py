@@ -38,6 +38,9 @@ class Primitive:
         """ Creating a node and append it to the model's execution graph
 
             The model is inferred from the input arguments
+
+            kwargs['__stacklevel__'] is the adjustment for stacklevel
+            -1 is the caller. -2 is the caller of the caller
         """
         from .symbol import Symbol, assymbol, BaseSymbol
         from .model import Model
@@ -45,7 +48,12 @@ class Primitive:
         self._check_primitive_class()
 
         # remember the frame info
-        previous_frame = inspect.currentframe().f_back
+        stacklevel = kwargs.pop('__stacklevel__', -2)
+        previous_frame = inspect.currentframe()
+        while stacklevel < 0:
+            previous_frame = previous_frame.f_back
+            stacklevel = stacklevel + 1
+
         _frameinfo = inspect.getframeinfo(previous_frame)
 
         node = Node(self, _frameinfo)

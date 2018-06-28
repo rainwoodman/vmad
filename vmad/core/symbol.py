@@ -43,28 +43,34 @@ class BaseSymbol(object):
         """ Evaluates an expression or a function on the symbol. see vmad.core.stdlib.eval. """
         return stdlib.eval(self, function)
 
-    def __add__(self, other): return stdlib.add(self, other)
-    def __radd__(self, other): return stdlib.add(other, self)
-    def __sub__(self, other): return stdlib.sub(self, other)
-    def __rsub__(self, other): return stdlib.add(other, self)
-    def __mul__(self, other): return stdlib.mul(self, other)
-    def __rmul__(self, other): return stdlib.mul(other, self)
-    def __truediv__(self, other): return stdlib.div(self, other)
-    def __rtruediv__(self, other): return stdlib.div(other, self)
+    # workaround numpy's operator overrides, which
+    # is higher priority than rxxx methodds (radd) defined here.
+    # this will be deprecated and we will need to add an
+    # __array_ufunc__ to dispatch this in the future.
+    __array_priority__ = 15.0
+
+    def __add__(self, other): return stdlib.add(self, other, __stacklevel__=-3)
+    def __radd__(self, other): return stdlib.add(other, self, __stacklevel__=-3)
+    def __sub__(self, other): return stdlib.sub(self, other, __stacklevel__=-3)
+    def __rsub__(self, other): return stdlib.sub(other, self, __stacklevel__=-3)
+    def __mul__(self, other): return stdlib.mul(self, other, __stacklevel__=-3)
+    def __rmul__(self, other): return stdlib.mul(other, self, __stacklevel__=-3)
+    def __truediv__(self, other): return stdlib.div(self, other, __stacklevel__=-3)
+    def __rtruediv__(self, other): return stdlib.div(other, self, __stacklevel__=-3)
     def __pow__(self, other, modulo=None):
         if modulo is not None:
             raise ValueError("pow with modulo is not supported")
-        return stdlib.pow(self, other)
+        return stdlib.pow(self, other, __stacklevel__=-3)
     def __rpow__(self, other):
         raise
-        return stdlib.pow(other, self)
+        return stdlib.pow(other, self, __stacklevel__=-3)
 
     def __floordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
     def __rfloordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
 
-    def __neg__(self): return stdlib.neg(self)
-    def __pos__(self): return stdlib.pos(self)
-    def __abs__(self): return stdlib.abs(self)
+    def __neg__(self): return stdlib.neg(self, __stacklevel__=-3)
+    def __pos__(self): return stdlib.pos(self, __stacklevel__=-3)
+    def __abs__(self): return stdlib.abs(self, __stacklevel__=-3)
 
 class Ref(object):
     """
