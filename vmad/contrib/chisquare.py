@@ -10,7 +10,7 @@ class MPIChiSquareOperator:
     aout = [('y', '*')]
 
     def main(self, x, comm):
-        chi2 = linalg.sum(linalg.mul(x, x))
+        chi2 = linalg.sum(x * x)
         chi2 = mpi.allreduce(chi2, comm)
         return dict(y = chi2)
 

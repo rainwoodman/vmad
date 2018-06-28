@@ -16,13 +16,13 @@ class FastPMOperator:
 
         if len(stages) == 0:
             rho = fastpm.c2r(rholnk)
-            rho = linalg.add(rho, 1.0)
+            rho = rho + 1.0
         else:
             dx, p, f = fastpm.nbody(rholnk, q, stages, cosmology, pm)
-            x = linalg.add(q, dx)
+            x = q + dx
             layout = fastpm.decompose(x, pm)
             rho = fastpm.paint(x, mass=1, layout=layout, pm=pm)
-            rho = linalg.mul(rho, 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q)))
+            rho = rho * (1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q)))
 
         return dict(fs=rho, s=rholnk)
 
@@ -31,8 +31,8 @@ class NLResidualOperator:
     ain = [('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
     def main(self, s, fs, d, invN):
-        r = linalg.add(fs, d * -1)
-        r = linalg.mul(r, invN ** 0.5)
+        r = fs - d
+        r = r * (invN ** 0.5)
 
         return dict(y = r)
 
@@ -41,14 +41,14 @@ class SmoothedNLResidualOperator:
     ain = [('s', '*'), ('fs', '*')]
     aout = [('y', '*')]
     def main(self, s, fs, d, invN, scale):
-        r = linalg.add(fs, d * -1)
+        r = fs - d
         def tf(k):
             k2 = sum(ki ** 2 for ki in k)
             return numpy.exp(- 0.5 * k2 * scale ** 2)
         c = fastpm.r2c(r)
         c = fastpm.apply_transfer(c, tf)
         r = fastpm.c2r(c)
-        r = linalg.mul(r, invN ** 0.5)
+        r = r * (invN ** 0.5)
         return dict(y = r)
 
 @autooperator
@@ -57,10 +57,10 @@ class LNResidualOperator:
     aout = [('y', '*')]
     def main(self, s, fs, d, invN):
         """ t is the truth, used only in evaluation. """
-        r = linalg.add(s, d * -1)
-        fac = linalg.pow(wn.Nmesh.prod(), -0.5)
-        fac = linalg.mul(fac, invN ** 0.5)
-        r = linalg.mul(r, fac)
+        r = s - d
+        fac = wn.Nmesh.prod() ** (-0.5)
+        fac = fac * (invN ** 0.5)
+        r = r * fac
         return dict(y = r)
 
 @autooperator
@@ -71,8 +71,8 @@ class PriorOperator:
         # when |s|^2 and invS are the same, this is supposed
         # to return 1.0
         fac = s.eval("x.pm.Nmesh.prod() ** -0.5")
-        fac = linalg.mul(fac, invS ** 0.5)
-        s_over_Shalf = linalg.mul(s, fac)
+        fac = fac * (invS ** 0.5)
+        s_over_Shalf = s * fac
         r = fastpm.c2r(s_over_Shalf)
         return dict(y = r)
 
