@@ -25,7 +25,7 @@ class Node:
 
     def __repr__(self):
         #return "%s(%s=>%s) at %s:%d" % (type(self).__name__, self.varin, self._varout, self._frameinfo[0], self._frameinfo[1])
-        return "%s" % self.name
+        return "%s @ %s : %s " % (self.name, self._frameinfo[0], self._frameinfo[1])
 
     def call(self, **kwargs):
         """ call the implementation function of the primitive;
