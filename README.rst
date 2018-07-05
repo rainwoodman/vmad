@@ -2,20 +2,21 @@ vmad stands for virtual machine automated differentation framework.
 
 The word virtual machine here does not mean much (think vm in LLVM), other
 than emphasizing that the computation graph is always traversed with
-an explicit linear order -- the order the nodes are triggerred. This means
+an explicit linear order -- the order the nodes are triggerred as the graph
+was built. This means
 we do not even try to do dependency based scheduling. The only optimization
 is to skip irrelevant nodes during the calculation.
 
 This is the third iteration of the design; it has become too big to be
-kept as an embed file in abopt. Two previous iterations
+kept as an embeded file in abopt. Two previous iterations
 can be found in the optimization package abopt (gradually being deprecated):
 
     https://github.com/bccp/abopt
 
 
 The core algorithm is stable. vmad uses tape-based automated differentation.
-A good reference on tape based auto-diff is in PhD thesis of Maclaurin,
-who wrote autograd: https://dougalmaclaurin.com/phd-thesis.pdf .
+A good reference on tape based auto-diff is in the PhD thesis of Maclaurin,
+who wrote ``autograd``: https://dougalmaclaurin.com/phd-thesis.pdf .
 
 Each operator consists of three types of primitives:
 
@@ -31,8 +32,8 @@ Note that Hessian of a Chi-square problem can be approximated as a product of
 jvp and vjp. (See wikipedia on Gauss-Newton optimization). In many cases this
 is sufficiently good. [reference needed]
 
-Complex numbers are treated as individual degrees of freedom. This is
-mathematically inferior, but it is more intuitive and avoids a hermitian conjugate
+Complex numbers are treated as individual degrees of freedom;
+mathematically inferior, but intuitive and avoiding a hermitian conjugate
 between gradients and parameter update.
 
 The interface is still experimental; hence documentation is sparse. There are three
@@ -43,7 +44,8 @@ of operators, connected by symbols. The forward pass on the model will substitut
 symbols with values, and resulting a tape that records these values for backward and
 forward propagation of the jacobians, which is what automated differentiation does.
 
-``autooperator`` is basically a ``model``, but built on demand and provides the
+``autooperator`` is a ``model`` that can be used as an ``operator``, 
+the model is built on-demand and it provides the
 jacobian operators via automated differentiation. Currently the tape of the
 autooperator node is recorded on the full tape, we will add option to recompute
 the tape (trading computation and memory).
@@ -52,11 +54,12 @@ A small library of operators for linear algebra (backed by numpy),
 particle-mesh simulation(backed by pmesh), and MPI (mpi4py) are in `vmad.lib`.
 The focus has been on CPU and MPI, mostly because we are close to a
 super computing facility (NERSC) that provide plenty of CPU and MPI. There are
-already PyTorch or Tensorflow for GPU oriented work (though not so suitable for MPI).
+already PyTorch or Tensorflow for GPU oriented work.
 
 A higher level Chi-square inversion problems are built on with abopt,
 and can be found in `contrib` directory. This mostly implements the procedures
-described in http://adsabs.harvard.edu/abs/2017JCAP...12..009S .
+described in http://adsabs.harvard.edu/abs/2017JCAP...12..009S for inversion of
+cosmic structure formation with a few million degrees of freedom.
 
 Here is an example operator, ``add``,
 
