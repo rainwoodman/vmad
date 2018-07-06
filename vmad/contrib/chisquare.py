@@ -108,6 +108,10 @@ class EpochScheduler(dict):
     def __call__(self, argname, values):
         self.schedule(argname, values)
 
+    @property
+    def min_nepochs(self):
+        return max(list(self.keys()) + [0]) + 1
+
     def schedule(self, argname, values):
         """ schedule a training parameter `argname`
             at the given epochs.
@@ -171,14 +175,24 @@ class MAPInversion:
         self.schedule_optimizer = EpochScheduler()
         self.schedule_problem = EpochScheduler()
 
-    def apply(self, d, epochs=[0], monitor_epoch=None, monitor_progress=None):
+    def schedule_as(self, other):
+        """ Schedule as the other problem """
+        self.schedule_optimizer.update(other.schedule_optimizer)
+        self.schedule_problem.update(other.schedule_problem)
+
+    def apply(self, d, s0, epochs=None, monitor_epoch=None, monitor_progress=None):
         """ Apply MAP inversion on synthetic data.
 
             returns the MAP estimation of the signal.
 
-            epochs : a list of epochs to run.
+            epochs : a list of epochs to run; if None, run all of them.
+
         """
-        s1 = d.r2c() * 1e-5
+        if epochs is None:
+            epochs = range(max(self.schedule_optimizer.min_nepochs,
+                         self.schedule_problem.min_nepochs))
+
+        s1 = s0
         for epoch in epochs:
             if monitor_epoch:
                 monitor_epoch(Epoch(epoch))
