@@ -81,4 +81,3 @@ class BaseScalarTest:
         for x_, y_ in zip(self.x_, self.y_):
             assert_allclose(self.inner(_x, x_), y_)
 
-

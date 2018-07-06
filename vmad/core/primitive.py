@@ -16,8 +16,15 @@ class Primitive:
 
     def __init__(self, func, opr):
         self.name = opr.prototype.__name__ + '-' + func
-        self.operator = opr
+        self._operator = weakref.ref(opr)
         # a few others are created in make_primitive
+
+    @property
+    def operator(self):
+        """ Use a weakref to break a cycle.
+            All primitives are added as members of an operator, so this is fine.
+        """
+        return self._operator()
 
     def _check_primitive_class(self):
         # assert the primitive is properly defined.

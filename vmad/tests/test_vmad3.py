@@ -87,4 +87,3 @@ def test_autooperator():
     # complicated model is longer
     assert len(m3[:]) > len(m2[:])
 
-
