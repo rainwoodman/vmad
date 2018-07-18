@@ -168,17 +168,28 @@ class MAPInversion:
         schedule_problem controls the parameters of the problem
         (subsampling, changing prior, etc).
     """
-
     def __init__(self, optimizer, ForwardOperator):
         self.optimizer = optimizer
         self.ForwardOperator = ForwardOperator
         self.schedule_optimizer = EpochScheduler()
         self.schedule_problem = EpochScheduler()
 
-    def schedule_as(self, other):
-        """ Schedule as the other problem """
+    @classmethod
+    def create_like(kls, other):
+        """ create a new inversion that is a copy of other.
+            notice that some of the attributes may be lost;
+            not supposed to add new attributes.
+        """
+        self = object.__new__(kls)
+        self.__dict__.update(other.__dict__)
+
+        self.ForwardOperator = other.ForwardOperator
+        self.optimizer = other.optimizer
+        self.schedule_optimizer = EpochScheduler()
+        self.schedule_problem = EpochScheduler()
         self.schedule_optimizer.update(other.schedule_optimizer)
         self.schedule_problem.update(other.schedule_problem)
+        return self
 
     def apply(self, d, s0, epochs=None, monitor_epoch=None, monitor_progress=None):
         """ Apply MAP inversion on synthetic data.
