@@ -36,6 +36,10 @@ class Node:
 
             Returns: dict, result for each varout.
         """
+        from .symbol import BaseSymbol
+        for key, value in kwargs.items():
+            assert not isinstance(value, BaseSymbol)
+
         r = self.primitive.impl(self, **kwargs)
 
         # allow returning without using a dict
@@ -48,6 +52,10 @@ class Node:
                 if r is not None:
                     raise ValueError("Return value of the primitive is not None, while no output arguments are defined")
                 r = {}
+
+        for key, value in r.items():
+            assert not isinstance(value, BaseSymbol)
+
         return r
 
     def record(self, kwargs, r):
@@ -71,5 +79,8 @@ class Node:
         d = {}
         d.update(r)
         d.update(kwargs)
+        from .symbol import BaseSymbol
+        for key, value in d.items():
+            assert not isinstance(value, BaseSymbol)
         return self.primitive.record_impl(self, **d)
 
