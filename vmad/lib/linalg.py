@@ -25,6 +25,49 @@ class matmul:
         C_=numpy.einsum('ik,ijk->ij',x_,A)
         return dict(C_=C_)
 
+from numpy.core.einsumfunc import _parse_einsum_input
+
+def _join_einsum_sub(sub_op, sub_y):
+    return ','.join(sub_op) + '->' + sub_y
+
+@operator
+class einsum:
+    ain = 'x'
+    aout = 'y'
+    def apl(self, subscripts, x):
+        operands = []
+        operands.append(subscripts)
+        operands.extend(x)
+        # we use the internal einsum function to parse subscripts to a normal form.
+        sub_op, sub_y, operands = _parse_einsum_input(operands)
+        sub_op = sub_op.split(',')
+        return dict(y=numpy.einsum(_join_einsum_sub(sub_op, sub_y), *x), sub_op=sub_op, sub_y=sub_y, x=x)
+
+    def vjp(self, x, _y, sub_op, sub_y):
+        _x = []
+        for i, arg in enumerate(x):
+            # Jacobian is removing the item from the chain. 
+            # vjp is replace the item with _y.
+            a = list(sub_op)[:]
+            x1 = list(x)[:]
+            new_sub_y = a[i]
+            a[i] = sub_y
+            x1[i] = _y
+            _x.append(numpy.einsum(_join_einsum_sub(a, new_sub_y), *x1))
+
+        return _x
+
+    def jvp(self, x, x_, sub_op, sub_y):
+        y_ = []
+        for i, arg in enumerate(x):
+            # Jacobian is removing the item from the chain. 
+            # jvp is replace the item with x_
+            x1 = list(x)[:]
+            x1[i] = x_[i]
+            y_.append(numpy.einsum(_join_einsum_sub(sub_op, sub_y), *x1))
+
+        # sum of all branches
+        return numpy.sum(y_, axis=0)
 
 @operator
 class unpack_complex:

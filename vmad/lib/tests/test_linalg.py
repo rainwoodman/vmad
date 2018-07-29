@@ -46,6 +46,28 @@ class Test_reshape(LinalgScalarTest):
         c = linalg.reshape(x, (5, 2))
         return c
 
+class Test_einsum(LinalgScalarTest):
+    x = numpy.arange(10)
+    y = sum(x ** 2) ** 2
+    x_ = numpy.eye(10)
+
+    def model(self, x):
+        # testing uncontracted dimensions
+        a = linalg.reshape(x, (10, 1, 1))
+        b = linalg.reshape(x, (1, 10))
+        return linalg.einsum("abc, ca->b", [a, b])
+
+class Test_einsum2(LinalgScalarTest):
+    x = numpy.arange(10)
+    y = sum(x ** 2) ** 2
+    x_ = numpy.eye(10)
+
+    def model(self, x):
+        # testing contraction
+        a = linalg.reshape(x, (10,))
+        b = linalg.reshape(x, (10))
+        return linalg.einsum("i, i->", [a, b])
+
 class Test_mul1(LinalgScalarTest):
     x = numpy.arange(10)
     y = sum(x ** 2)
