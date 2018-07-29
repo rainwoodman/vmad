@@ -8,13 +8,13 @@ class to_scalar:
     ain = {'x' : 'RealField'}
     aout = {'y' : '*'}
 
-    def apl(self, x):
+    def apl(node, x):
         return dict(y = x.cnorm())
 
-    def vjp(self, _y, x):
+    def vjp(node, _y, x):
         return dict(_x= x * (2 * _y))
 
-    def jvp(self, x_, x):
+    def jvp(node, x_, x):
         return dict(y_ = x.cdot(x_) * 2)
 
 @operator
@@ -22,17 +22,17 @@ class as_complex_field:
     ain = {'x' : '*'}
     aout = {'y' : 'ComplexField'}
 
-    def apl(self, x, pm):
+    def apl(node, x, pm):
         y = pm.create(mode='complex')
         y.real[...] = x[..., 0]
         y.imag[...] = x[..., 1]
         return dict(y=y)
 
-    def vjp(self, _y, pm):
+    def vjp(node, _y, pm):
         _x = numpy.stack([_y.real, _y.imag], axis=-1)
         return dict(_x=_x)
 
-    def jvp(self, x_, pm):
+    def jvp(node, x_, pm):
         y_ = pm.create(mode='complex')
         y_.real[...] = x_[..., 0]
         y_.imag[...] = x_[..., 1]
@@ -43,12 +43,12 @@ class r2c:
     ain = {'x' : 'RealField'}
     aout = {'y' : 'ComplexField'}
 
-    def apl(self, x):
+    def apl(node, x):
         return dict(y=x.r2c(), pm=x.pm)
-    def vjp(self, _y, pm):
+    def vjp(node, _y, pm):
         _y = pm.create(mode='complex', value=_y)
         return dict(_x=_y.r2c_vjp())
-    def jvp(self, x_, pm):
+    def jvp(node, x_, pm):
         x_ = pm.create(mode='real', value=x_)
         return dict(y_=x_.r2c())
 
@@ -57,12 +57,12 @@ class c2r:
     ain = {'x' : 'ComplexField'}
     aout = {'y' : 'RealField'}
 
-    def apl(self, x):
+    def apl(node, x):
         return dict(y=x.c2r(), pm=x.pm)
-    def vjp(self, _y, pm):
+    def vjp(node, _y, pm):
         _y = pm.create(mode='real', value=_y)
         return dict(_x=_y.c2r_vjp())
-    def jvp(self, x_, pm):
+    def jvp(node, x_, pm):
         x_ = pm.create(mode='complex', value=x_)
         return dict(y_=x_.c2r())
 
@@ -71,15 +71,15 @@ class apply_transfer:
     ain = {'x' : 'ComplexField'}
     aout = {'y' : 'ComplexField'}
 
-    def apl(self, x, tf):
+    def apl(node, x, tf):
         filter = lambda k, v: v * tf(k)
         return dict(y=x.apply(filter))
 
-    def vjp(self, _y, tf):
+    def vjp(node, _y, tf):
         filter = lambda k, v: v * numpy.conj(tf(k))
         return dict(_x=_y.apply(filter))
 
-    def jvp(self, x_, tf):
+    def jvp(node, x_, tf):
         filter = lambda k, v: v * tf(k)
         return dict(y_=x_.apply(filter))
 
@@ -91,11 +91,11 @@ class paint:
            'mass' : 'ndarray'
            }
 
-    def apl(self, x, mass, layout, pm):
+    def apl(node, x, mass, layout, pm):
         mesh = pm.paint(x, mass=mass, layout=layout, hold=False)
         return dict(mesh=mesh)
 
-    def vjp(self, _mesh, x, mass, layout, pm):
+    def vjp(node, _mesh, x, mass, layout, pm):
         _mesh = pm.create(mode='real', value=_mesh)
         _x, _mass = pm.paint_vjp(_mesh, x, layout=layout, mass=mass)
         return dict(
@@ -103,7 +103,7 @@ class paint:
             _x=_x,
             _mass=_mass)
 
-    def jvp(self, x_, x, layout, mass, layout_, mass_, pm):
+    def jvp(node, x_, x, layout, mass, layout_, mass_, pm):
         if x_ is 0: x_ = None
         if mass_ is 0: mass_ = None # force cast it to a scalar 0, so make it None
         mesh_ = pm.paint_jvp(x, v_mass=mass_, mass=mass, v_pos=x_, layout=layout)
@@ -118,20 +118,20 @@ class readout:
         'mesh': 'RealField',
       'layout' : 'Layout'}
 
-    def apl(self, mesh, x, layout, resampler=None):
+    def apl(node, mesh, x, layout, resampler=None):
         N = mesh.pm.comm.allreduce(len(x))
         value = mesh.readout(x, layout=layout, resampler=resampler)
         return dict(value=value, pm=mesh.pm)
 
-    def vjp(self, _value, x, layout, mesh, pm, resampler=None):
+    def vjp(node, _value, x, layout, mesh, pm, resampler=None):
         _mesh, _x = mesh.readout_vjp(x, _value, layout=layout, resampler=resampler)
         return dict(_mesh=_mesh, _x=_x, _layout=0)
 
-    def jvp(self, x_, mesh_, x, layout, layout_, mesh, pm, resampler=None):
+    def jvp(node, x_, mesh_, x, layout, layout_, mesh, pm, resampler=None):
         if mesh_ is 0: mesh_ = None
         if x_ is 0: x_ = None
         mesh = pm.create(mode='real', value=mesh)
-        value_ = mesh.readout_jvp(x, v_self=mesh_, v_pos=x_, layout=layout, resampler=resampler)
+        value_ = mesh.readout_jvp(x, v_node=mesh_, v_pos=x_, layout=layout, resampler=resampler)
         return dict(value_=value_)
 
 @operator
@@ -139,7 +139,7 @@ class decompose:
     aout={'layout' : 'Layout'}
     ain={'x': 'ndarray'}
 
-    def apl(self, x, pm):
+    def apl(node, x, pm):
         return dict(layout=pm.decompose(x))
 
     def vjp(engine, _layout):
@@ -153,7 +153,7 @@ class gather:
     aout='y'
     ain ='x', 'layout'
 
-    def apl(self, x, layout):
+    def apl(node, x, layout):
         return dict(y=layout.gather(x))
 
     def vjp(engine, _y, layout):
@@ -168,7 +168,7 @@ class exchange:
     aout='y'
     ain ='x', 'layout'
 
-    def apl(self, x, layout):
+    def apl(node, x, layout):
         return dict(y=layout.exchange(x))
 
     def vjp(engine, _y, layout):
@@ -425,14 +425,14 @@ class cdot:
     aout = {'y' : '*'}
 
     # only keep the real part, assuming two fields are hermitian.
-    def apl(self, x1, x2):
+    def apl(node, x1, x2):
         return dict(y=x1.cdot(x2).real)
 
-    def vjp(self, x1, x2, _y):
+    def vjp(node, x1, x2, _y):
         _x1 = x2.cdot_vjp(_y)
         _x2 = x1.cdot_vjp(_y)
         return dict(_x1=_x1, _x2=_x2)
 
-    def jvp(self, x1_, x2_, x1, x2):
+    def jvp(node, x1_, x2_, x1, x2):
         return dict(y_=x1.cdot(x2_).real + x2.cdot(x1_).real)
 

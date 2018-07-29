@@ -6,13 +6,13 @@ class allreduce:
     ain = [('x', '*')]
     aout = [('y', '*')]
 
-    def apl(self, x, comm):
+    def apl(node, x, comm):
         return comm.allreduce(x)
 
-    def vjp(self, _y, comm):
+    def vjp(node, _y, comm):
         return dict(_x = _y)
 
-    def jvp(self, x_, comm):
+    def jvp(node, x_, comm):
         return dict(y_ = comm.allreduce(x_))
 
 

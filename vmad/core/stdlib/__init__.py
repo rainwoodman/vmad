@@ -6,11 +6,11 @@ class terminal:
     ain  = 'x'
     aout = 'y'
 
-    def apl(self, x):
+    def apl(node, x):
         return dict(y=x)
-    def vjp(self, _y):
+    def vjp(node, _y):
         return dict(_x=_y)
-    def jvp(self, x_):
+    def jvp(node, x_):
         return dict(y_=x_)
 
 

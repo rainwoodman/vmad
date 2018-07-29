@@ -11,7 +11,7 @@ class eval:
     ain  = 'x'
     aout = 'y'
 
-    def apl(self, x, function):
+    def apl(node, x, function):
         """ Evaluates a function on the symbol x at run time.
 
             Parameters
@@ -27,8 +27,8 @@ class eval:
             from builtins import eval
             return dict(y=eval(function, dict(x=x)))
 
-    def vjp(self): return 0
-    def jvp(self): return 0
+    def vjp(node): return 0
+    def jvp(node): return 0
 
 @operator
 class watchpoint:
@@ -44,24 +44,24 @@ class watchpoint:
     ain  = {'x': '*'}
     aout = {}
 
-    def apl(self, x, monitor=print):
+    def apl(node, x, monitor=print):
         monitor(x)
         return dict(y = x)
 
-    def vjp(self): return 0
-    def jvp(self): return
+    def vjp(node): return 0
+    def jvp(node): return
 
 @operator
 class assert_isinstance:
     """ assert a variable is of a certain type """
     ain = 'obj'
     aout = []
-    def apl(self, obj, class_or_tuple):
+    def apl(node, obj, class_or_tuple):
         if not isinstance(obj, class_or_tuple):
             raise TypeError('Expecting an instance of %s, got %s', repr(class_or_tuple), repr(type(obj)))
 
-    def vjp(self): return 0
-    def jvp(self): return 0
+    def vjp(node): return 0
+    def jvp(node): return 0
 
 @operator
 class assert_true:
@@ -77,9 +77,9 @@ class assert_true:
 
     ain = 'x'
     aout = []
-    def apl(self, x, func):
+    def apl(node, x, func):
         if not func(x):
             raise AssertionError('Assertion failed on %s(%s).' % (func, x))
 
-    def vjp(self): return 0
-    def jvp(self): return 0
+    def vjp(node): return 0
+    def jvp(node): return 0

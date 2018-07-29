@@ -10,13 +10,13 @@ class error_on_grad:
     ain = 'x'
     aout = 'y'
 
-    def apl(self, x):
+    def apl(node, x):
         return x
 
-    def vjp(self, _y):
+    def vjp(node, _y):
         raise AssertionError("shall not reach here")
 
-    def jvp(self, x_):
+    def jvp(node, x_):
         raise AssertionError("shall not reach here")
 
 @operator
@@ -24,13 +24,13 @@ class error:
     ain = 'x'
     aout = 'y'
 
-    def apl(self, x):
+    def apl(node, x):
         raise AssertionError("shall not reach here")
 
-    def vjp(self, _y):
+    def vjp(node, _y):
         raise AssertionError("shall not reach here")
 
-    def jvp(self, x_):
+    def jvp(node, x_):
         raise AssertionError("shall not reach here")
 
 def test_operator_zero():
@@ -61,27 +61,27 @@ def test_operator_multiple():
         ain = [('x', '*')]
         aout = 'y'
 
-        def apl(self, x): return x
-        def vjp(self, _y): return _y
-        def jvp(self, x_): return x_
+        def apl(node, x): return x
+        def vjp(node, _y): return _y
+        def jvp(node, x_): return x_
 
     @operator
     class with_defaults:
         ain = [('x', '*'), 'y']
         aout = 'y'
 
-        def apl(self, x, y): return x
-        def vjp(self, _y): return _y, _y
-        def jvp(self, x_, y_): return x_, y_
+        def apl(node, x, y): return x
+        def vjp(node, _y): return _y, _y
+        def jvp(node, x_, y_): return x_, y_
 
     @operator
     class with_defaults:
         ain = 'x', 'y'
         aout = 'y'
 
-        def apl(self, x, y): return x
-        def vjp(self, _y): return _y, _y
-        def jvp(self, x_, y_): return x_, y_
+        def apl(node, x, y): return x
+        def vjp(node, _y): return _y, _y
+        def jvp(node, x_, y_): return x_, y_
 
 
 def test_operator_defaults():
@@ -90,15 +90,15 @@ def test_operator_defaults():
         ain = 'x'
         aout = 'y'
 
-        def apl(self, x, defaults=False):
+        def apl(node, x, defaults=False):
             assert defaults == False
             return x
 
-        def vjp(self, _y, defaults=False):
+        def vjp(node, _y, defaults=False):
             assert defaults == False
             return _y
 
-        def jvp(self, x_, defaults=False):
+        def jvp(node, x_, defaults=False):
             assert defaults == False
             return x_
 
@@ -150,13 +150,13 @@ class split:
     ain = 'x'
     aout = 'args'
 
-    def apl(self, x, axis):
+    def apl(node, x, axis):
         return [numpy.take(x, i, axis=axis) for i in range(numpy.shape(x)[axis])]
 
-    def vjp(self, _args, axis):
+    def vjp(node, _args, axis):
         return numpy.stack(_args, axis=axis)
 
-    def jvp(self, x_, axis):
+    def jvp(node, x_, axis):
         return [numpy.take(x_, i, axis=axis) for i in range(numpy.shape(x_)[axis])]
 
 @operator
@@ -164,13 +164,13 @@ class stack:
     ain = 'args'
     aout = 'y'
 
-    def apl(self, args, axis):
+    def apl(node, args, axis):
         return numpy.stack(args, axis=axis)
 
-    def vjp(self, _y, args, axis):
+    def vjp(node, _y, args, axis):
         return [numpy.take(_y, i, axis=axis) for i in range(numpy.shape(_y)[axis])]
 
-    def jvp(self, args_, args, axis):
+    def jvp(node, args_, args, axis):
         return numpy.stack(args_, axis)
 
 
@@ -244,11 +244,11 @@ def test_operator_multi_out():
         # to preserve orders
         aout = 'y1', 'y2'
 
-        def apl(self, x):
+        def apl(node, x):
             return dict(y1=x, y2=2 * x)
-        def vjp(self, _y1, _y2):
+        def vjp(node, _y1, _y2):
             return dict(_x = _y1 + 2 * _y2)
-        def jvp(self, x_):
+        def jvp(node, x_):
             return dict(y1_=x_, y2_=2 * x_)
 
     with Builder() as m:
@@ -281,11 +281,11 @@ def test_operator_multi_out_unused():
         # to preserve orders
         aout = 'y1', 'y2'
 
-        def apl(self, x):
+        def apl(node, x):
             return dict(y1=x, y2=2 * x)
-        def vjp(self, _y1, _y2):
+        def vjp(node, _y1, _y2):
             return dict(_x = _y1 + 2 * _y2)
-        def jvp(self, x_):
+        def jvp(node, x_):
             return dict(y1_=x_, y2_=2 * x_)
 
     with Builder() as m:
@@ -315,16 +315,16 @@ def test_operator_record():
         ain = 'x'
         aout = 'y'
 
-        def apl(self, x, p):
+        def apl(node, x, p):
             return x * p
 
-        def rcd(self, x, p, y):
+        def rcd(node, x, p, y):
             return dict(x=x, u=p)
 
-        def vjp(self, x, _y, u):
+        def vjp(node, x, _y, u):
             return _y * u
 
-        def jvp(self, x, x_, u):
+        def jvp(node, x, x_, u):
             return x_ * u
 
     with Builder() as m:
@@ -346,16 +346,16 @@ def test_operator_record_extra():
         ain = 'x'
         aout = 'y'
 
-        def apl(self, x, p):
+        def apl(node, x, p):
             return dict(y=x * p, extra=p)
 
-        def rcd(self, x, p, y, extra):
+        def rcd(node, x, p, y, extra):
             return dict(x=x, u=p, extra=extra)
 
-        def vjp(self, x, _y, u):
+        def vjp(node, x, _y, u):
             return _y * u
 
-        def jvp(self, x, x_, u):
+        def jvp(node, x, x_, u):
             return x_ * u
 
     with Builder() as m:
