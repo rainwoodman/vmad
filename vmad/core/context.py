@@ -79,7 +79,7 @@ class Context(dict):
             self.remove_unused(model[i+1:])
 
             if monitor is not None:
-                monitor(node, self)
+                monitor(node, node.varin, node.varout, self)
 
         r = [r[varname] for varname in vout]
 

@@ -4,52 +4,55 @@ from vmad.lib import linalg
 import numpy
 
 from vmad import Builder
-from vmad.testing import BaseScalarTest
+from vmad.testing import BaseVectorTest
 
-class LinalgScalarTest(BaseScalarTest):
-    to_scalar = staticmethod(linalg.to_scalar)
-
-class Test_to_scalar(LinalgScalarTest):
-
-    x = numpy.arange(10)
-    y = sum(x ** 2)
-    x_ = numpy.eye(10)
-
-    def model(self, x):
-        return x
-
-class Test_pack_complex(LinalgScalarTest):
+class Test_pack_complex(BaseVectorTest):
     x = numpy.arange(10) # will pack to complex of x + x * 1j
-    y = sum(x ** 2) * 1.25
-    x_ = numpy.eye(10)
+    y = numpy.sum(2 * x ** 2)
 
     def model(self, x):
-        c = linalg.pack_complex(x, linalg.mul(x, 0.5))
+        c = linalg.pack_complex(x, x)
+        c = linalg.to_scalar(c)
         return c
 
-class Test_unpack_complex(LinalgScalarTest):
+class Test_unpack_complex(BaseVectorTest):
     x = numpy.arange(10) # will pack to complex of x + x * 1j
-    y = sum(x ** 2) * 4
-    x_ = numpy.eye(10)
+    y = x * 2
 
     def model(self, x):
         c = linalg.pack_complex(x, x)
         r, i = linalg.unpack_complex(c)
         return linalg.add(r, i)
 
-class Test_reshape(LinalgScalarTest):
+
+class Test_conj(BaseVectorTest):
     x = numpy.arange(10) # will pack to complex of x + x * 1j
-    y = sum(x ** 2)
-    x_ = numpy.eye(10)
+    y = x * 2
+
+    def model(self, x):
+        c = x + linalg.conj(x * 1j) * 1j
+        return c
+
+class Test_conj_mul(BaseVectorTest):
+    x = numpy.arange(10) # will pack to complex of x + x * 1j
+    y = x ** 2
+
+    def model(self, x):
+        x = x * 1j
+        c = linalg.conj(x)
+        return x * c
+
+class Test_reshape(BaseVectorTest):
+    x = numpy.arange(10) 
+    y = x.reshape(5, 2)
 
     def model(self, x):
         c = linalg.reshape(x, (5, 2))
         return c
 
-class Test_einsum(LinalgScalarTest):
+class Test_einsum(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2) ** 2
-    x_ = numpy.eye(10)
+    y = numpy.sum(x ** 2).reshape(1)
 
     def model(self, x):
         # testing uncontracted dimensions
@@ -57,10 +60,9 @@ class Test_einsum(LinalgScalarTest):
         b = linalg.reshape(x, (1, 10))
         return linalg.einsum("abc, ca->b", [a, b])
 
-class Test_einsum2(LinalgScalarTest):
+class Test_einsum2(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2) ** 2
-    x_ = numpy.eye(10)
+    y = numpy.sum(x ** 2)
 
     def model(self, x):
         # testing contraction
@@ -68,108 +70,93 @@ class Test_einsum2(LinalgScalarTest):
         b = linalg.reshape(x, (10))
         return linalg.einsum("i, i->", [a, b])
 
-class Test_mul1(LinalgScalarTest):
+class Test_mul1(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2)
-    x_ = numpy.eye(10)
+    y = x
 
     def model(self, x):
         return linalg.mul(x, 1.0)
 
-class Test_mul2(LinalgScalarTest):
+class Test_mul2(BaseVectorTest):
     x = numpy.arange(10) + 1
-    y = sum(x**2)
-    x_ = numpy.eye(10)
-    eps = 1e-3
+    y = x
     def model(self, x):
         y1 = linalg.pow(x, 0.3)
         y2 = linalg.pow(x, 0.7)
         return linalg.mul(y1, y2)
 
-class Test_mul3(LinalgScalarTest):
+class Test_mul3(BaseVectorTest):
     x = numpy.arange(10) 
-    y = sum(x**2)
-    x_ = numpy.eye(10)
+    y = x
 
     def model(self, x):
         return linalg.mul(1, x)
 
-class Test_sum(LinalgScalarTest):
+class Test_sum(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x.reshape(5, 2).sum(axis=0) ** 2)
-    x_ = numpy.eye(10)
+    y = x.reshape(5, 2).sum(axis=0)
 
     def model(self, x):
         x = linalg.reshape(x, (5, 2))
 
         return linalg.sum(x, axis=0)
 
-class Test_pow(LinalgScalarTest):
+class Test_pow(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2)
-    x_ = numpy.eye(10)
+    y = x ** 2.0
 
     def model(self, x):
-        return linalg.pow(x, 1.0)
+        return linalg.pow(x, 2.0)
 
-class Test_abs(LinalgScalarTest):
+class Test_abs(BaseVectorTest):
     x = numpy.arange(10) - 4.5 # avoid 0 because numerial is bad.
-    y = sum((abs(x) + x) ** 2)
-    x_ = numpy.eye(10)
+    y = (abs(x) + x)
 
     def model(self, x):
         return linalg.add(linalg.abs(x), x)
 
-class Test_log(LinalgScalarTest):
+class Test_log(BaseVectorTest):
     logx = 1 + numpy.arange(10)
     x = numpy.exp(logx)
-    y = sum(logx ** 2)
-    x_ = numpy.eye(10)
+    y = logx
 
     def model(self, x):
         return linalg.log(x)
 
-class Test_add(LinalgScalarTest):
+class Test_add(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum((x + 5.0)** 2)
-    x_ = numpy.eye(10)
+    y = (x + 5.0)
 
     def model(self, x):
         return linalg.add(x, 5.0)
 
-class Test_copy(LinalgScalarTest):
+class Test_copy(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2)
-    x_ = numpy.eye(10)
+    y = x
 
     def model(self, x):
         return linalg.copy(x)
 
-class Test_stack(LinalgScalarTest):
+class Test_stack(BaseVectorTest):
     x = numpy.arange(10)
-    y = sum(x ** 2) * 2
-    x_ = numpy.eye(10)
+    y = numpy.stack([x, x])
 
     def model(self, x):
         return linalg.stack([x, x], axis=0)
 
-class Test_take(LinalgScalarTest):
+class Test_take(BaseVectorTest):
 
     x = numpy.arange(10)
-    y = 2 ** 2
-    x_ = numpy.eye(10)
+    y = numpy.array(2)
 
     def model(self, x):
         return linalg.take(x, 2, axis=0)
 
-class Test_sumat(LinalgScalarTest):
-    x = numpy.arange(10)
+class Test_sumat(BaseVectorTest):
+    x = numpy.arange(10).reshape(5, 2)
     at = [0, 1, 3]
-    y = numpy.sum(numpy.add.reduceat(x.reshape(5, 2), at, axis=0) ** 2)
-    x_ = numpy.eye(10)
+    y = numpy.add.reduceat(x, at, axis=0)
 
     def model(self, x):
-        x = linalg.reshape(x, (5, 2))
-
         return linalg.sumat(x, at=self.at, axis=0)
 

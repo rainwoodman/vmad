@@ -98,6 +98,20 @@ class pack_complex:
         return dict(y_ = real_ + imag_ * 1j)
 
 @operator
+class conj:
+    ain = 'x'
+    aout = 'y'
+
+    def apl(node, x):
+        return numpy.conj(x)
+
+    def vjp(node, _y):
+        return numpy.conj(_y)
+
+    def jvp(node, x_):
+        return numpy.conj(x_)
+
+@operator
 class to_scalar:
     ain  = {'x': 'ndarray'}
     aout = {'y': '*'}
