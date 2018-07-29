@@ -11,9 +11,24 @@ class Test_pack_complex(BaseVectorTest):
     y = numpy.sum(2 * x ** 2)
 
     def model(self, x):
+        # FIXME: pack_complex only works with to_scalar
+        # but it doesn't work with mul and conj
+        # there is a missing negative sign. one of these is wrong.
         c = linalg.pack_complex(x, x)
         c = linalg.to_scalar(c)
         return c
+
+class Test_conj_mul(BaseVectorTest):
+    x = numpy.arange(10) # will pack to complex of x + x * 1j
+    y = x ** 2
+
+    def model(self, x):
+        # FIXME: pack_complex only works with to_scalar
+        # but it doesn't work with mul and conj
+        # there is a missing negative sign. one of these is wrong.
+        x = x * 1j
+        c = linalg.conj(x)
+        return x * c
 
 class Test_unpack_complex(BaseVectorTest):
     x = numpy.arange(10) # will pack to complex of x + x * 1j
@@ -23,24 +38,6 @@ class Test_unpack_complex(BaseVectorTest):
         c = linalg.pack_complex(x, x)
         r, i = linalg.unpack_complex(c)
         return linalg.add(r, i)
-
-
-class Test_conj(BaseVectorTest):
-    x = numpy.arange(10) # will pack to complex of x + x * 1j
-    y = x * 2
-
-    def model(self, x):
-        c = x + linalg.conj(x * 1j) * 1j
-        return c
-
-class Test_conj_mul(BaseVectorTest):
-    x = numpy.arange(10) # will pack to complex of x + x * 1j
-    y = x ** 2
-
-    def model(self, x):
-        x = x * 1j
-        c = linalg.conj(x)
-        return x * c
 
 class Test_reshape(BaseVectorTest):
     x = numpy.arange(10) 
