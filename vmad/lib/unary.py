@@ -23,6 +23,18 @@ class unary_ufunc:
         return node.operator.prototype.fprime(x) * x_
 
 @operator
+class sinc(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.sinc(x)
+    @staticmethod
+    def fprime(x):
+        # FIXME: expand this properly:
+        y = 1 / x * (
+          numpy.cos(numpy.pi * x)
+        - numpy.sin(numpy.pi * x) / (numpy.pi * x))
+        return numpy.where(x == 0, 0, y)
+
+@operator
 class sin(unary_ufunc):
     @staticmethod
     def f(x): return numpy.sin(x)

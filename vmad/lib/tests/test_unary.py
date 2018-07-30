@@ -17,6 +17,11 @@ class UnaryUfuncVectorTest(BaseVectorTest):
     def model(self, x):
         return type(self).ufunc(x)
 
+class Test_sinc(UnaryUfuncVectorTest):
+    ufunc = unary.sinc
+    x = numpy.arange(-10, 10)
+
+
 class Test_sin(UnaryUfuncVectorTest):
     ufunc = unary.sin
     x = numpy.arange(-10, 10)
