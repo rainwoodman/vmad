@@ -8,6 +8,9 @@ import numpy
 # compatible with the python ones.
 from vmad.core.stdlib import mul, add, abs, pow
 
+# import all functions defined in unary module
+from vmad.lib.unary import *
+
 @operator
 class matmul:
     ain = {'x':'*'}
@@ -124,21 +127,6 @@ class to_scalar:
 
     def jvp(node, x_, x):
         return dict(y_ = (x_ * numpy.conj(x) + numpy.conj(x_) * x).sum())
-
-@operator
-class log:
-    ain = {'x' : '*',
-          }
-    aout = {'y' : '*'}
-
-    def apl(node, x):
-        return dict(y=numpy.log(x))
-
-    def vjp(node, _y, x):
-        return dict(_x = _y * 1. / x)
-
-    def jvp(node, x_, x):
-        return dict(y_ = x_ * 1. / x)
 
 @operator
 class copy:
