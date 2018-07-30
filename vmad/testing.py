@@ -137,6 +137,9 @@ class BaseVectorTest:
 
     def setup(self):
 
+        if hasattr(self.y, '__call__'):
+            self.y = self.y(self.x)
+
         self.m = self._make_model()
 
         if self.x_bases is None:
