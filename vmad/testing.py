@@ -93,7 +93,7 @@ class BaseVectorTest:
                                # if None, generate based on the shape of y.
 
 
-    epsilon = 1e-3
+    epsilon = 1e-7
 
     def allclose(self, x, y):  # measuring the 
         return numpy.allclose(x, y)

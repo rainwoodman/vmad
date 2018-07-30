@@ -116,7 +116,7 @@ class Test_log(BaseVectorTest):
     logx = 1 + numpy.arange(10)
     x = numpy.exp(logx)
     y = logx
-
+    epsilon = 1e-3 # enlarge epsilon for loss of precision in log.
     def model(self, x):
         return linalg.log(x)
 

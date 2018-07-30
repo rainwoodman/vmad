@@ -37,6 +37,50 @@ class cos(unary_ufunc):
     def fprime(x): return -numpy.sin(x)
 
 @operator
+class tan(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.tan(x)
+    # FIXME: hard code a faster version which saves tan.
+    @staticmethod
+    def fprime(x): return 1 + numpy.tan(x) ** 2
+
+@operator
+class arcsin(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.arcsin(x)
+    @staticmethod
+    def fprime(x): return 1 / (1 - x **2) **0.5
+
+@operator
+class arccos(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.arccos(x)
+    @staticmethod
+    def fprime(x): return -1 / (1 - x **2) **0.5
+
+@operator
+class arctan(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.arctan(x)
+    @staticmethod
+    def fprime(x): return 1 / (1 + x **2)
+
+@operator
+class sinh(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.sinh(x)
+    @staticmethod
+    def fprime(x): return numpy.cosh(x)
+
+@operator
+class cosh(unary_ufunc):
+    @staticmethod
+    def f(x): return numpy.cosh(x)
+    @staticmethod
+    def fprime(x): return numpy.sinh(x)
+
+
+@operator
 class log(unary_ufunc):
     @staticmethod
     def f(x): return numpy.log(x)
@@ -64,3 +108,4 @@ class absolute(unary_ufunc):
     @staticmethod
     def fprime(x): return 1.0 * (x > 0) + -1.0 * (x < 0)
 
+fabs = absolute
