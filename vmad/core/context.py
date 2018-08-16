@@ -44,7 +44,7 @@ class Context(dict):
     def result_used(self, node):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
-        if node.is_primitive(terminal.apl):
+        if node.primitive == terminal.apl:
             return True
 
         for argname, var in node.varout.items():
@@ -71,7 +71,7 @@ class Context(dict):
             if self.result_used(node):
                 self.execute(node, tape)
 
-            if node.is_primitive(terminal.apl):
+            if node.primitive == terminal.apl:
                 for argname, var in node.varout.items():
                     r[var._name] = self[var._name]
 

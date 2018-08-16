@@ -28,9 +28,6 @@ class Node:
         # varin are references.
         return self._varin[key].symbol
 
-    def is_primitive(self, primitive):
-        return self.primitive == primitive
-
     @property
     def varin(self):
         return self._varin
@@ -104,7 +101,7 @@ class Node:
         # we will only do this on the apl primitives
         # because otherwise this is undefined
         # the algebra of autodiff in vmad3 is explicitly not closed!
-        assert node.is_primitive(node.operator.apl)
+        assert node.primitive == node.operator.apl
 
         assert func in ['vjp', 'jvp', 'apl']
 
