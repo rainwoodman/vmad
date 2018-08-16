@@ -12,23 +12,6 @@
 class EmptyPrimitive:
     argnames = []
 
-def lazyproperty(fn):
-    """
-        Decorator that makes a property lazy-evaluated.
-        This is used to defer the creation of the primitives of
-        an operator, such that they do not create an import time
-        circular dependency.
-    """
-    attr_name = '___' + fn.__name__ + '___'
-
-    @property
-    def _lazy_property(self):
-        if not hasattr(self, attr_name):
-            setattr(self, attr_name, fn(self))
-        return getattr(self, attr_name)
-
-    return _lazy_property
-
 class Operator(object):
     def __init__(self, prototype):
         self.prototype = prototype
@@ -45,7 +28,7 @@ class Operator(object):
         else:
             return self
 
-    @lazyproperty
+    @property
     def apl(self):
         if hasattr(self.prototype, 'rcd'):
             record_impl = unbound(self.prototype.rcd)
@@ -55,14 +38,14 @@ class Operator(object):
         return _make_primitive(self, 'apl', unbound(self.prototype.apl),
                 record_impl=record_impl)
 
-    @lazyproperty
+    @property
     def vjp(self):
         if hasattr(self.prototype, 'vjp'):
             return _make_primitive(self, 'vjp', unbound(self.prototype.vjp))
         else:
             return EmptyPrimitive
 
-    @lazyproperty
+    @property
     def jvp(self):
         if hasattr(self.prototype, 'jvp'):
             return _make_primitive(self, 'jvp', unbound(self.prototype.jvp))

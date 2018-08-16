@@ -1,4 +1,4 @@
-from .operator import _make_primitive, Operator, unbound, _to_ordereddict, lazyproperty
+from .operator import _make_primitive, Operator, unbound, _to_ordereddict
 from .model import Builder
 from .context import Context
 from .error import ModelError
@@ -32,7 +32,7 @@ class AutoOperator(Operator):
 
         self.hyperargs = {}
 
-    @lazyproperty
+    @property
     def apl(self):
 
         def apl(node, **kwargs):
@@ -44,7 +44,7 @@ class AutoOperator(Operator):
 
         return _make_primitive(self, 'apl', apl, argnames=self.argnames, record_impl=rcd)
 
-    @lazyproperty
+    @property
     def vjp(self):
         def vjp(node, **kwargs):
             tape = kwargs['##tape']
@@ -58,7 +58,7 @@ class AutoOperator(Operator):
 
         return _make_primitive(self, 'vjp', vjp, argnames=self.argnames_vjp)
 
-    @lazyproperty
+    @property
     def jvp(self):
         def jvp(node, **kwargs):
             tape = kwargs['##tape']

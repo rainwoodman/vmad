@@ -16,7 +16,7 @@ class Node:
         self.hyper_args = {}
 
     def is_primitive(self, primitive):
-        return self.primitive is primitive
+        return self.primitive == primitive
 
     @property
     def varin(self):
