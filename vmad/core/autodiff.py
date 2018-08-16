@@ -7,6 +7,9 @@ class SymbolCollection(dict):
     """ A dictionary to look up collected symbols generated
         during the autodiff
     """
+    def __init__(self, model):
+        self.model = model
+        self.zero = ZeroLiteral()
     def add(self, var):
         self[var._name] = var
         return var
@@ -14,13 +17,13 @@ class SymbolCollection(dict):
     def add_vjp(self, var, ref_id=None):
         # there can be many versions of vjp with distinct values.
         if ref_id is None:
-            var_p = Symbol(var._vjp_name)
+            var_p = Symbol(var._vjp_name, model=self.model)
         else:
-            var_p = Symbol(var._vjp_name + '#%d' % ref_id)
+            var_p = Symbol(var._vjp_name + '#%d' % ref_id, model=self.model)
         return self.add(var_p)
 
     def add_jvp(self, var):
-        return self.add(Symbol(var._jvp_name))
+        return self.add(Symbol(var._jvp_name, model=self.model))
 
     def get_vjp(self, var, ref_id=None):
         if ref_id is None:
@@ -30,6 +33,10 @@ class SymbolCollection(dict):
 
     def get_jvp(self, var):
         return self[var._jvp_name]
+
+    def check(self, model):
+        for var in self.values():
+            assert var._model is model
 
 def prepare_opr_kwargs(record, model):
     """ generate a first guess of kwargs based on the record.
@@ -102,7 +109,7 @@ def create_input_jvp(var, symbols):
         return [create_input_jvp(v, symbols) for v in var]
 
     if isinstance(var, Literal):
-        return ZeroLiteral()
+        return symbols.zero
 
     return symbols[var._jvp_name]
 
@@ -114,15 +121,13 @@ def create_input_vjp(var, symbols):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
     if not var._vjp_name in symbols:
-        # the variable is not declared on the model
-        # FIXME: this can either be a bug or the variable is unused.
-        return ZeroLiteral()
+        return symbols.zero
     return symbols[var._vjp_name]
 
 def vjpmodel(tape):
     """ generate a vector jacobian product model based on a tape """
     model = Model()
-    symbols = SymbolCollection()
+    symbols = SymbolCollection(model)
 
     for var in tape.model._vout:
         model.input(symbols.add_vjp(var))
@@ -154,7 +159,7 @@ def vjpmodel(tape):
     # mark outputs
     for var in tape.model._vin:
         if not var._vjp_name in symbols:
-            varout = ZeroLiteral()
+            varout = symbols.zero
         else:
             varout = symbols[var._vjp_name]
         model.output(**{var._vjp_name : varout})
@@ -164,7 +169,7 @@ def vjpmodel(tape):
 def jvpmodel(tape):
     """ generate a jacobian vector product model based on a tape """
     model = Model()
-    symbols = SymbolCollection()
+    symbols = SymbolCollection(model)
 
     for var in tape.model._vin:
         model.input(symbols.add_jvp(var))
@@ -191,9 +196,10 @@ def jvpmodel(tape):
     # mark outputs
     for var in tape.model._vout:
         if not var._jvp_name in symbols:
-            varout = ZeroLiteral()
+            varout = symbols.zero
         else:
             varout = symbols[var._jvp_name]
         model.output(**{var._jvp_name : varout})
 
+    symbols.check(model)
     return model
