@@ -11,23 +11,6 @@ from vmad.core.stdlib import mul, add, abs, pow
 # import all functions defined in unary module
 from vmad.lib.unary import *
 
-@operator
-class matmul:
-    ain = {'x':'*'}
-    aout = {'C':'*'}
-
-    def apl(node, x, A):
-        C=numpy.einsum('ik,ijk->ij',x,A) 
-        return dict(C=C)
-
-    def vjp(node, _C,A):
-        _x=numpy.einsum('ijk,ij->ik',A,_C)
-        return dict(_x=_x)
-
-    def jvp(node, x_,A):
-        C_=numpy.einsum('ik,ijk->ij',x_,A)
-        return dict(C_=C_)
-
 from numpy.core.einsumfunc import _parse_einsum_input
 
 def _join_einsum_sub(sub_op, sub_y):
@@ -71,6 +54,9 @@ class einsum:
 
         # sum of all branches
         return numpy.sum(y_, axis=0)
+
+def matmul(x, A):
+    return einsum('ik,ijk->ij', x, A)
 
 @operator
 class unpack_complex:
