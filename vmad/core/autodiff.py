@@ -27,12 +27,12 @@ def prepare_opr_kwargs(record, model):
     kwargs = {}
     return impl_kwargs
 
-def create_output_vjp(ref, model, symbols):
+def create_output_vjp(ref, symbols):
 
     # make lists for lists
     if isinstance(ref, ListRef):
         return List([
-                    create_output_vjp(r, model, symbols)
+                    create_output_vjp(r, symbols)
                     for r in ref]
                 )
 
@@ -46,18 +46,18 @@ def create_output_vjp(ref, model, symbols):
         # largest reference_id, must be the
         # first time seeing the partial derivative
         # define the symbol for the full derivative
-        var_p = Symbol(var._vjp_name, model=model)
+        var_p = Symbol(var._vjp_name)
     else:
-        var_p = Symbol(var._vjp_name + '#%d' % ref.ref_id, model=model)
+        var_p = Symbol(var._vjp_name + '#%d' % ref.ref_id)
 
     return symbols.add(var_p)
 
-def connect_output_vjp(ref, model, symbols):
+def connect_output_vjp(ref, symbols):
 
     # make lists for lists
     if isinstance(ref, ListRef):
         for r in ref:
-            connect_output_vjp(r, model, symbols)
+            connect_output_vjp(r, symbols)
         return
 
     var = ref.symbol
@@ -72,34 +72,34 @@ def connect_output_vjp(ref, model, symbols):
         var_p = symbols[var._vjp_name + '#%d' % ref.ref_id]
         # create a new symbol for the result, with the same name
         # because we intent to overwrite it.
-        var_f2 = Symbol(var._vjp_name, model=model)
+        var_f2 = Symbol(var._vjp_name)
         add(x1=var_f, x2=var_p, y=var_f2)
 
         symbols.add(var_f2)
 
-def create_output_jvp(var, model, symbols):
+def create_output_jvp(var, symbols):
     if isinstance(var, List):
-        return [create_output_jvp(v, model, symbols) for v in var]
+        return [create_output_jvp(v, symbols) for v in var]
 
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
-    var = Symbol(var._jvp_name, model=model)
+    var = Symbol(var._jvp_name)
 
     return symbols.add(var)
 
-def create_input_jvp(var, model, symbols):
+def create_input_jvp(var, symbols):
     if isinstance(var, List):
-        return [create_input_jvp(v, model, symbols) for v in var]
+        return [create_input_jvp(v, symbols) for v in var]
 
     if isinstance(var, Literal):
         return ZeroLiteral()
 
     return symbols[var._jvp_name]
 
-def create_input_vjp(var, model, symbols):
+def create_input_vjp(var, symbols):
     if isinstance(var, List):
-        return [create_input_vjp(v, model, symbols) for v in var]
+        return [create_input_vjp(v, symbols) for v in var]
 
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
@@ -127,11 +127,11 @@ def vjpmodel(tape):
 
         # initialize 'v'
         for argname, var in p.varout.items():
-            kwargs['_' + argname] = create_input_vjp(var, model, symbols)
+            kwargs['_' + argname] = create_input_vjp(var, symbols)
 
         # create output vjps
         for argname, ref in p.varin.items():
-            var_p = create_output_vjp(ref, model, symbols)
+            var_p = create_output_vjp(ref, symbols)
 
             if var_p is not None:
                 kwargs['_' + argname] = var_p
@@ -140,7 +140,7 @@ def vjpmodel(tape):
 
         # combine partial derivatives.
         for argname, ref in p.varin.items():
-            connect_output_vjp(ref, model, symbols)
+            connect_output_vjp(ref, symbols)
 
     # mark outputs
     for var in tape.model._vin:
@@ -169,12 +169,12 @@ def jvpmodel(tape):
 
         # initialize 'v'
         for argname, ref in p.varin.items():
-            jvp_var = create_input_jvp(ref.symbol, model, symbols)
+            jvp_var = create_input_jvp(ref.symbol, symbols)
             kwargs[argname + '_'] = jvp_var
 
         # create output symbols
         for argname, var in p.varout.items():
-            jvp_var = create_output_jvp(var, model, symbols)
+            jvp_var = create_output_jvp(var, symbols)
             kwargs[argname + '_'] = jvp_var
 
         jvp_of_p(**kwargs)
