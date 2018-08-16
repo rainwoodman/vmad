@@ -74,9 +74,9 @@ class mul(binary):
     def rcd(node, x1, x2, y):
         from vmad.core.symbol import Literal
         # the other value is not needed, 0 should work.
-        if isinstance(node.varin['x1'].symbol, Literal):
+        if isinstance(node['x1'], Literal):
             x2 = 0
-        if isinstance(node.varin['x2'].symbol, Literal):
+        if isinstance(node['x2'], Literal):
             x1 = 0
         return dict(x1=x1, x2=x2)
 

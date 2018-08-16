@@ -1,19 +1,32 @@
 class Node:
+    """ A node on the computing graph.
+
+        The node is the first argument to apl(node, ....) and
+        jvp / vjp functions.
+
+        node[argname] gives the input symbol
+    """
     def __init__(self, primitive, _frameinfo):
         self.primitive = primitive
         self.operator = primitive.operator
         self._frameinfo = _frameinfo
 
-        # add a few aliases for accessing primitive attributes.
+        # add a few aliases for accessing primitive attributes
+        # 
         self.name = primitive.name
         self.ain = primitive.ain
         self.aout = primitive.aout
 
-        self._varin = {}
+        self._varin = {} # references
         self._varout = {}
 
         # FIXME: why is this useful at all?
         self.hyper_args = {}
+
+    def __getitem__(self, key):
+        """ getting input variables as symbols """
+        # varin are references.
+        return self._varin[key].symbol
 
     def is_primitive(self, primitive):
         return self.primitive == primitive
