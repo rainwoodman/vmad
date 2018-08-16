@@ -15,6 +15,9 @@ class Node:
         # FIXME: why is this useful at all?
         self.hyper_args = {}
 
+    def is_primitive(self, primitive):
+        return self.primitive is primitive
+
     @property
     def varin(self):
         return self._varin
@@ -83,4 +86,16 @@ class Node:
         for key, value in d.items():
             assert not isinstance(value, BaseSymbol)
         return self.primitive.record_impl(self, **d)
+
+    def find_primitive_type(node, func):
+        # we will only do this on the apl primitives
+        # because otherwise this is undefined
+        # the algebra of autodiff in vmad3 is explicitly not closed!
+        assert node.is_primitive(node.operator.apl)
+
+        assert func in ['vjp', 'jvp', 'apl']
+
+        if func == 'jvp': return node.operator.jvp
+        if func == 'vjp': return node.operator.vjp
+        if func == 'apl': return node.operator.apl
 

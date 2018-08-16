@@ -1,8 +1,7 @@
-from .symbol import Symbol, Literal
 from .error import DuplicatedOutput, InferError
 from .context import Context
 from .tape import Tape
-
+from .symbol import Symbol
 from .stdlib import terminal
 
 from collections import OrderedDict

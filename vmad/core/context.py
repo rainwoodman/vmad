@@ -1,5 +1,5 @@
-from .stdlib import terminal
 from .error import UnexpectedOutput, makeExecutionError, ModelError
+from .stdlib import terminal
 
 _raise_internal_errors = True
 
@@ -44,7 +44,7 @@ class Context(dict):
     def result_used(self, node):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
-        if node.primitive is terminal._apl:
+        if node.is_primitive(terminal.apl):
             return True
 
         for argname, var in node.varout.items():
@@ -59,7 +59,6 @@ class Context(dict):
         """
             compute a model in the current context (self)
         """
-
         _voutnames = set([var._name for var in model._vout])
 
         for varname in vout:
@@ -72,7 +71,7 @@ class Context(dict):
             if self.result_used(node):
                 self.execute(node, tape)
 
-            if node.primitive is terminal._apl:
+            if node.is_primitive(terminal.apl):
                 for argname, var in node.varout.items():
                     r[var._name] = self[var._name]
 

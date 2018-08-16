@@ -1,9 +1,76 @@
-from .operator import _make_primitive, Operator, unbound, _to_ordereddict
+from .operator import _make_primitive, Operator, unbound, _to_ordereddict, lazyproperty
 from .model import Builder
 from .context import Context
 from .error import ModelError
 
 class AutoOperator(Operator):
+
+    def __init__(self, prototype, argnames):
+        Operator.__init__(self, prototype)
+
+        impl = unbound(prototype.main)
+
+        # use the argnames of main function
+        if argnames is None:
+            argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
+
+        argnames_vjp = list(argnames)
+        argnames_jvp = list(argnames)
+
+        argnames_vjp.append('##tape')
+        argnames_jvp.append('##tape')
+
+        # add v arguments
+        for argname in self.aout:
+            argnames_vjp.append('_' + argname)
+        for argname in self.ain:
+            argnames_jvp.append(argname + '_')
+
+        self.argnames = argnames
+        self.argnames_vjp = argnames_vjp
+        self.argnames_jvp = argnames_jvp
+
+        self.hyperargs = {}
+
+    @lazyproperty
+    def apl(self):
+
+        def apl(node, **kwargs):
+            y = _compute(node.operator, kwargs)
+            return y
+
+        def rcd(node, **kwargs):
+            return kwargs
+
+        return _make_primitive(self, 'apl', apl, argnames=self.argnames, record_impl=rcd)
+
+    @lazyproperty
+    def vjp(self):
+        def vjp(node, **kwargs):
+            tape = kwargs['##tape']
+
+            v =    [(a, kwargs[a]) for a in node.ain.keys() if a.startswith('_')]
+
+            vjp = tape.get_vjp()
+            vjpvout = tape.get_vjp_vout()
+            vjpout = vjp.compute(vjpvout, init=v)
+            return dict(zip(vjpvout, vjpout))
+
+        return _make_primitive(self, 'vjp', vjp, argnames=self.argnames_vjp)
+
+    @lazyproperty
+    def jvp(self):
+        def jvp(node, **kwargs):
+            tape = kwargs['##tape']
+
+            v =    [(a, kwargs[a]) for a in node.ain.keys() if a .endswith('_')]
+
+            jvp = tape.get_jvp()
+            jvpvout = tape.get_jvp_vout()
+            jvpout = jvp.compute(jvpvout, init=v)
+            return dict(zip(jvpvout, jvpout))
+
+        return _make_primitive(self, 'jvp', jvp, argnames=self.argnames_jvp)
 
     # FIXME: add docstring / argnames
     # shall be the list of extra args
@@ -45,7 +112,7 @@ class AutoOperator(Operator):
 
         # remove those args already defined
         argnames = tuple([
-                argname for argname in obj._apl.argnames if argname not in hyperargs
+                argname for argname in obj.apl.argnames if argname not in hyperargs
                 ])
 
         # create a new operator, because we need new primitives that points to this operator.
@@ -72,60 +139,7 @@ def autooperator(kls, argnames=None):
 
     from collections import OrderedDict
 
-    impl = unbound(kls.main)
-
-    # use the argnames of main function
-    if argnames is None:
-        argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
-    argnames_vjp = list(argnames)
-    argnames_jvp = list(argnames)
-
-    argnames_vjp.append('##tape')
-    argnames_jvp.append('##tape')
-
-    obj = AutoOperator(kls)
-
-    obj.ain = _to_ordereddict(kls.ain)
-    obj.aout = _to_ordereddict(kls.aout)
-
-    # add v arguments
-    for argname in obj.aout:
-        argnames_vjp.append('_' + argname)
-    for argname in obj.ain:
-        argnames_jvp.append(argname + '_')
-
-    def apl(self, **kwargs):
-        y = _compute(self.operator, kwargs)
-        return y
-
-    def rcd(self, **kwargs):
-        return kwargs
-
-    def vjp(self, **kwargs):
-        tape = kwargs['##tape']
-
-        v =    [(a, kwargs[a]) for a in self.ain.keys() if a.startswith('_')]
-
-        vjp = tape.get_vjp()
-        vjpvout = tape.get_vjp_vout()
-        vjpout = vjp.compute(vjpvout, init=v)
-        return dict(zip(vjpvout, vjpout))
-
-    def jvp(self, **kwargs):
-        tape = kwargs['##tape']
-
-        v =    [(a, kwargs[a]) for a in self.ain.keys() if a .endswith('_')]
-
-        jvp = tape.get_jvp()
-        jvpvout = tape.get_jvp_vout()
-        jvpout = jvp.compute(jvpvout, init=v)
-        return dict(zip(jvpvout, jvpout))
-
-    obj._apl = _make_primitive(obj, 'apl', apl, argnames=argnames, record_impl=rcd)
-    obj._vjp = _make_primitive(obj, 'vjp', vjp, argnames=argnames_vjp)
-    obj._jvp = _make_primitive(obj, 'jvp', jvp, argnames=argnames_jvp)
-
-    obj.hyperargs = {}
+    obj = AutoOperator(kls, argnames)
 
     return obj
 
@@ -138,7 +152,7 @@ def _build(obj, kwargs):
 
     model_args = {}
     # copy extra args of the main function
-    for argname in obj._apl.argnames:
+    for argname in obj.apl.argnames:
         if argname not in obj.ain:
             model_args[argname] = kwargs[argname]
 

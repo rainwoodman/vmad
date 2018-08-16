@@ -1,3 +1,5 @@
+from . import autodiff
+
 class Record(object):
     """ A record on the tape. 
 
@@ -40,15 +42,11 @@ class Tape(list):
 
     def get_vjp(self):
         assert self._completed
-        # to avoid cicurlar reference; this is not a strong dependency
-        from .autodiff import vjpmodel
-        return vjpmodel(self)
+        return autodiff.vjpmodel(self)
 
     def get_jvp(self):
         assert self._completed
-        # to avoid cicurlar reference; this is not a strong dependency
-        from .autodiff import jvpmodel
-        return jvpmodel(self)
+        return autodiff.jvpmodel(self)
 
     def compute_jvjp(self, vout, aout, init):
         jvp = self.get_jvp()

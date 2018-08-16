@@ -1,7 +1,5 @@
 from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List
-from .model import Model
 from .stdlib import terminal, add
-from .operator import find_primitive_type
 
 class SymbolCollection(dict):
     """ A dictionary to look up collected symbols generated
@@ -126,7 +124,7 @@ def create_input_vjp(var, symbols):
 
 def vjpmodel(tape):
     """ generate a vector jacobian product model based on a tape """
-    model = Model()
+    model = type(tape.model)()
     symbols = SymbolCollection(model)
 
     for var in tape.model._vout:
@@ -135,7 +133,7 @@ def vjpmodel(tape):
     for i, record in enumerate(tape[::-1]):
         p = record.node
 
-        vjp_of_p = find_primitive_type(p, func='vjp')
+        vjp_of_p = p.find_primitive_type(func='vjp')
 
         kwargs = prepare_opr_kwargs(record, model)
 
@@ -168,7 +166,7 @@ def vjpmodel(tape):
 
 def jvpmodel(tape):
     """ generate a jacobian vector product model based on a tape """
-    model = Model()
+    model = type(tape.model)()
     symbols = SymbolCollection(model)
 
     for var in tape.model._vin:
@@ -177,7 +175,7 @@ def jvpmodel(tape):
     for i, record in enumerate(tape):
         p = record.node
 
-        jvp_of_p = find_primitive_type(p, func='jvp')
+        jvp_of_p = p.find_primitive_type(func='jvp')
 
         kwargs = prepare_opr_kwargs(record, model)
 

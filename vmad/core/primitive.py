@@ -4,6 +4,9 @@ import inspect
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .node import Node
 
+from .symbol import Symbol, assymbol, BaseSymbol
+from .model import Model
+
 class Primitive:
     """ Primitives are building blocks of models.
 
@@ -33,9 +36,6 @@ class Primitive:
                 raise BrokenPrimitive("primitive class attribute '%s' is not defined" % attr)
 
 
-    # Primitive a subclass of Symbol. When there is a single
-    # return value, it behaves like an usual Symbol.
-
     # When there are multiple return values, or if the return variable(s)
     # are fed on the calling arguments, it behaves like a list,
     # and must be unpacked. A strange error (during resolving) is raised if not
@@ -49,8 +49,6 @@ class Primitive:
             kwargs['__stacklevel__'] is the adjustment for stacklevel
             -1 is the caller. -2 is the caller of the caller
         """
-        from .symbol import Symbol, assymbol, BaseSymbol
-        from .model import Model
 
         self._check_primitive_class()
 

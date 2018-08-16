@@ -1,4 +1,4 @@
-from .error import ResolveError, ModelError
+from .error import ResolveError
 import weakref
 
 from . import stdlib

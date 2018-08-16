@@ -13,18 +13,62 @@ from __future__ import print_function
 class EmptyPrimitive:
     argnames = []
 
+def lazyproperty(fn):
+    """
+        Decorator that makes a property lazy-evaluated.
+        This is used to defer the creation of the primitives of
+        an operator, such that they do not create an import time
+        circular dependency.
+    """
+    attr_name = '___' + fn.__name__ + '___'
+
+    @property
+    def _lazy_property(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+
+    return _lazy_property
+
 class Operator(object):
     def __init__(self, prototype):
         self.prototype = prototype
+        self.ain = _to_ordereddict(prototype.ain)
+        self.aout = _to_ordereddict(prototype.aout)
+
 
     def __call__(self, *args, **kwargs):
-        return self._apl(*args, **kwargs)
+        return self.apl(*args, **kwargs)
 
     def __get__(self, instance, owner):
         if instance is not None:
             return InstanceOperator(self, instance)
         else:
             return self
+
+    @lazyproperty
+    def apl(self):
+        if hasattr(self.prototype, 'rcd'):
+            record_impl = unbound(self.prototype.rcd)
+        else:
+            record_impl = record_copy_autodiff
+
+        return _make_primitive(self, 'apl', unbound(self.prototype.apl),
+                record_impl=record_impl)
+
+    @lazyproperty
+    def vjp(self):
+        if hasattr(self.prototype, 'vjp'):
+            return _make_primitive(self, 'vjp', unbound(self.prototype.vjp))
+        else:
+            return EmptyPrimitive
+
+    @lazyproperty
+    def jvp(self):
+        if hasattr(self.prototype, 'jvp'):
+            return _make_primitive(self, 'jvp', unbound(self.prototype.jvp))
+        else:
+            return EmptyPrimitive
 
 class InstanceOperator(Operator):
     def __init__(self, base, instance):
@@ -57,19 +101,7 @@ def _to_ordereddict(ain):
 
     return OrderedDict(ain)
 
-def find_primitive_type(node, func):
-    # we will only do this on the apl primitives
-    # because otherwise this is undefined
-    # the algebra of autodiff in vmad3 is explicitly not closed!
-    assert node.primitive is node.operator._apl
-
-    assert func in ['vjp', 'jvp', 'apl']
-
-    if func == 'jvp': return node.operator._jvp
-    if func == 'vjp': return node.operator._vjp
-    if func == 'apl': return node.operator._apl
-
-def record_copy_all(self, **kwargs):
+def record_copy_all(node, **kwargs):
     """ A default rcd implementation that copies all kwargs to the tape.
 
         the impl is used for the vjp and vjp primitives.
@@ -80,14 +112,14 @@ def record_copy_all(self, **kwargs):
     """
     return kwargs
 
-def record_copy_autodiff(self, **kwargs):
+def record_copy_autodiff(node, **kwargs):
     """ A default rcd implementation that copies `useful` kwargs to the tape
         for the autodiff.
 
         the impl is used for the apl primitives if no rcd is given;
     """
-    jvp = find_primitive_type(self, 'jvp')
-    vjp = find_primitive_type(self, 'vjp')
+    jvp = node.find_primitive_type('jvp')
+    vjp = node.find_primitive_type('vjp')
     record = {}
     for argname, value in kwargs.items():
         if argname in jvp.argnames or argname in vjp.argnames:
@@ -144,28 +176,7 @@ def operator(kls):
 
     """
 
-    if hasattr(kls, 'rcd'):
-        record_impl = unbound(kls.rcd)
-    else:
-        record_impl = record_copy_autodiff
-
     opr = Operator(kls)
-
-    opr.ain = _to_ordereddict(kls.ain)
-    opr.aout = _to_ordereddict(kls.aout)
-
-    opr._apl = _make_primitive(opr, 'apl', unbound(kls.apl),
-        record_impl=record_impl)
-
-    if hasattr(kls, 'vjp'):
-        opr._vjp = _make_primitive(opr, 'vjp', unbound(kls.vjp))
-    else:
-        opr._vjp = EmptyPrimitive
-
-    if hasattr(kls, 'jvp'):
-        opr._jvp = _make_primitive(opr, 'jvp', unbound(kls.jvp))
-    else:
-        opr._jvp = EmptyPrimitive
 
     return opr
 
