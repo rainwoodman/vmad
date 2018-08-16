@@ -11,8 +11,22 @@ class SymbolCollection(dict):
         self[var._name] = var
         return var
 
-    def get_vjp(self, var):
-        return self[var._vjp_name]
+    def add_vjp(self, var, ref_id=None):
+        # there can be many versions of vjp with distinct values.
+        if ref_id is None:
+            var_p = Symbol(var._vjp_name)
+        else:
+            var_p = Symbol(var._vjp_name + '#%d' % ref_id)
+        return self.add(var_p)
+
+    def add_jvp(self, var):
+        return self.add(Symbol(var._jvp_name))
+
+    def get_vjp(self, var, ref_id=None):
+        if ref_id is None:
+            return self[var._vjp_name]
+        else:
+            return self[var._vjp_name + '#%d' % ref_id]
 
     def get_jvp(self, var):
         return self[var._jvp_name]
@@ -46,11 +60,9 @@ def create_output_vjp(ref, symbols):
         # largest reference_id, must be the
         # first time seeing the partial derivative
         # define the symbol for the full derivative
-        var_p = Symbol(var._vjp_name)
+        return symbols.add_vjp(var)
     else:
-        var_p = Symbol(var._vjp_name + '#%d' % ref.ref_id)
-
-    return symbols.add(var_p)
+        return symbols.add_vjp(var, ref.ref_id)
 
 def connect_output_vjp(ref, symbols):
 
@@ -69,13 +81,12 @@ def connect_output_vjp(ref, symbols):
     # accummulate the partials
     if not ref.is_last_ref():
         var_f = symbols.get_vjp(var)
-        var_p = symbols[var._vjp_name + '#%d' % ref.ref_id]
+        var_p = symbols.get_vjp(var, ref.ref_id)
         # create a new symbol for the result, with the same name
         # because we intent to overwrite it.
-        var_f2 = Symbol(var._vjp_name)
-        add(x1=var_f, x2=var_p, y=var_f2)
+        var_f2 = symbols.add_vjp(var)
 
-        symbols.add(var_f2)
+        add(x1=var_f, x2=var_p, y=var_f2)
 
 def create_output_jvp(var, symbols):
     if isinstance(var, List):
@@ -84,9 +95,7 @@ def create_output_jvp(var, symbols):
     if isinstance(var, Literal):
         raise RuntimError("This shall not happen, vjp is from an output which can never be a literal")
 
-    var = Symbol(var._jvp_name)
-
-    return symbols.add(var)
+    return symbols.add_jvp(var)
 
 def create_input_jvp(var, symbols):
     if isinstance(var, List):
@@ -116,7 +125,7 @@ def vjpmodel(tape):
     symbols = SymbolCollection()
 
     for var in tape.model._vout:
-        symbols.add(model.input(var._vjp_name))
+        model.input(symbols.add_vjp(var))
 
     for i, record in enumerate(tape[::-1]):
         p = record.node
@@ -158,7 +167,7 @@ def jvpmodel(tape):
     symbols = SymbolCollection()
 
     for var in tape.model._vin:
-        symbols.add(model.input(var._jvp_name))
+        model.input(symbols.add_jvp(var))
 
     for i, record in enumerate(tape):
         p = record.node
