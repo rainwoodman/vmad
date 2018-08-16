@@ -131,7 +131,7 @@ class readout:
         if mesh_ is 0: mesh_ = None
         if x_ is 0: x_ = None
         mesh = pm.create(mode='real', value=mesh)
-        value_ = mesh.readout_jvp(x, v_node=mesh_, v_pos=x_, layout=layout, resampler=resampler)
+        value_ = mesh.readout_jvp(x, v_self=mesh_, v_pos=x_, layout=layout, resampler=resampler)
         return dict(value_=value_)
 
 @operator
