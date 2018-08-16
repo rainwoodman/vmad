@@ -14,27 +14,11 @@ class AutoOperator(Operator):
         if argnames is None:
             argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
 
-        argnames_vjp = list(argnames)
-        argnames_jvp = list(argnames)
-
-        argnames_vjp.append('##tape')
-        argnames_jvp.append('##tape')
-
-        # add v arguments
-        for argname in self.aout:
-            argnames_vjp.append('_' + argname)
-        for argname in self.ain:
-            argnames_jvp.append(argname + '_')
-
         self.argnames = argnames
-        self.argnames_vjp = argnames_vjp
-        self.argnames_jvp = argnames_jvp
-
         self.hyperargs = {}
 
     @property
     def apl(self):
-
         def apl(node, **kwargs):
             y = _compute(node.operator, kwargs)
             return y
@@ -46,6 +30,12 @@ class AutoOperator(Operator):
 
     @property
     def vjp(self):
+        # add v arguments
+        argnames_vjp = list(self.argnames)
+        argnames_vjp.append('##tape')
+        for argname in self.aout:
+            argnames_vjp.append('_' + argname)
+
         def vjp(node, **kwargs):
             tape = kwargs['##tape']
 
@@ -56,10 +46,16 @@ class AutoOperator(Operator):
             vjpout = vjp.compute(vjpvout, init=v)
             return dict(zip(vjpvout, vjpout))
 
-        return _make_primitive(self, 'vjp', vjp, argnames=self.argnames_vjp)
+        return _make_primitive(self, 'vjp', vjp, argnames=argnames_vjp)
 
     @property
     def jvp(self):
+        argnames_jvp = list(self.argnames)
+        argnames_jvp.append('##tape')
+
+        for argname in self.ain:
+            argnames_jvp.append(argname + '_')
+
         def jvp(node, **kwargs):
             tape = kwargs['##tape']
 
@@ -70,7 +66,7 @@ class AutoOperator(Operator):
             jvpout = jvp.compute(jvpvout, init=v)
             return dict(zip(jvpvout, jvpout))
 
-        return _make_primitive(self, 'jvp', jvp, argnames=self.argnames_jvp)
+        return _make_primitive(self, 'jvp', jvp, argnames=argnames_jvp)
 
     # FIXME: add docstring / argnames
     # shall be the list of extra args
