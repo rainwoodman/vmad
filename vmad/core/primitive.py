@@ -16,24 +16,25 @@ class Primitive:
 
     """
 
-    def __init__(self, func, opr):
+    def __init__(self, func, opr, ain, aout, argnames, impl, record_impl):
         self.name = opr.prototype.__name__ + '-' + func
+        self.func = func
         self.operator = opr
+        self.ain = ain
+        self.aout = aout
+        self.argnames = argnames
+
+        self.impl = impl
+        self.record_impl = record_impl
+
         # a few others are created in make_primitive
 
     def __eq__(self, other):
         """ If two primitives are the same, they must be for the same operator
             and the same function type. """
         if self.operator is not other.operator: return False
-        if self.name != other.name: return False
+        if self.func != other.func: return False
         return True
-
-    def _check_primitive_class(self):
-        # assert the primitive is properly defined.
-        for attr in ['ain', 'aout', 'impl', 'func', 'argnames', 'operator', 'record_impl']:
-            if not hasattr(self, attr):
-                raise BrokenPrimitive("primitive class attribute '%s' is not defined" % attr)
-
 
     # When there are multiple return values, or if the return variable(s)
     # are fed on the calling arguments, it behaves like a list,
@@ -48,8 +49,6 @@ class Primitive:
             kwargs['__stacklevel__'] is the adjustment for stacklevel
             -1 is the caller. -2 is the caller of the caller
         """
-
-        self._check_primitive_class()
 
         # remember the frame info
         stacklevel = kwargs.pop('__stacklevel__', -2)

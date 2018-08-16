@@ -213,14 +213,7 @@ def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all)
             aout[arg + '_'] = opr.aout[arg]
         impl = zerobypass(impl)
 
-    primitive = Primitive(func, opr)
-
-    primitive.impl     = impl
-    primitive.record_impl     = record_impl
-    primitive.func     = func
-    primitive.ain      = ain
-    primitive.aout     = aout
-    primitive.argnames = argnames
+    primitive = Primitive(func, opr, ain, aout, argnames, impl, record_impl)
 
     return primitive
 
