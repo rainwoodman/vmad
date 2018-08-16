@@ -1,4 +1,3 @@
-import weakref
 import inspect
 
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
@@ -23,6 +22,8 @@ class Primitive:
         # a few others are created in make_primitive
 
     def __eq__(self, other):
+        """ If two primitives are the same, they must be for the same operator
+            and the same function type. """
         if self.operator is not other.operator: return False
         if self.name != other.name: return False
         return True
