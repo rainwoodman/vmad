@@ -307,4 +307,3 @@ def assymbol(obj):
         obj = Literal(obj)
 
     return obj
-

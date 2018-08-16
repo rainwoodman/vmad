@@ -171,7 +171,6 @@ def _check_var_references(var):
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
 def _infer_models(var, reset=None):
-    from .symbol import Symbol
 
     if isinstance(var, Symbol):
         if reset is not None:
