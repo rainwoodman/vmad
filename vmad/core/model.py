@@ -9,14 +9,11 @@ from collections import OrderedDict
 import uuid
 import weakref
 
-
 class Model(list):
     def __init__(self):
         self._vin = []
         self._vout = []
 
-        # symbols that are registered for autodiff
-        self._syms = {}
         self._name = uuid.uuid4().hex
 
     def __hash__(self):
@@ -33,12 +30,6 @@ class Model(list):
         self._vout.extend(other._vout)
 
         list.extend(self, other)
-
-    def get(self, varname):
-        return self._syms[varname]
-
-    def has(self, varname):
-        return varname in self._syms
 
     def input(self, *args):
         """ Declare multiple input variables.
@@ -88,8 +79,6 @@ class Model(list):
             symbol._model_ref = self
         else:
             symbol._model_ref = weakref.ref(self)
-
-        self._syms[symbol._name] = symbol
 
     def output(self, **kwargs):
         for varname, oldvar in kwargs.items():
