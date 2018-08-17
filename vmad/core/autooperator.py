@@ -215,6 +215,7 @@ def autooperator(*args):
 
         see the example below in this file.
 
+        .. code ::
             @autooperator
             class function:
                 ain = 'x', 'y'
