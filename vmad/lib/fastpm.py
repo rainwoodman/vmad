@@ -193,150 +193,110 @@ def fourier_space_laplace(k):
     k2[bad] = 0
     return k2
 
-@autooperator
-class lpt1:
-    ain = [
-            ('rhok',  'ComplexField'),
-          ]
-    aout = [
-            ('dx1', '*'),
-         #, ('dx2', '*'),
-           ]
+@autooperator('rhok,q->dx1')
+def lpt1(rhok, q, pm):
+    p = apply_transfer(rhok, fourier_space_laplace)
 
-    def main(self, rhok, q, pm):
-        p = apply_transfer(rhok, fourier_space_laplace)
+    layout = decompose(q, pm)
 
-        layout = decompose(q, pm)
+    r1 = []
+    for d in range(pm.ndim):
+        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+        dx1_r = c2r(dx1_c)
+        dx1 = readout(dx1_r, q, layout)
+        r1.append(dx1)
 
-        r1 = []
-        for d in range(pm.ndim):
-            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
-            dx1_r = c2r(dx1_c)
-            dx1 = readout(dx1_r, q, layout)
-            r1.append(dx1)
+    dx1 = linalg.stack(r1, axis=-1)
 
-        dx1 = linalg.stack(r1, axis=-1)
+    return dict(dx1 = dx1)
 
-        return dict(dx1 = dx1)
+@autooperator('rhok->rho_lpt2')
+def lpt2src(rhok, pm):
+    if pm.ndim != 3:
+        raise ValueError("LPT 2 only works in 3d")
 
-@autooperator
-class lpt2src:
-    ain = [
-            ('rhok',  'ComplexField'),
-          ]
-    aout = [
-            ('rho_lpt2', 'RealField'),
-           ]
+    D1 = [1, 2, 0]
+    D2 = [2, 0, 1]
 
-    def main(self, rhok, pm):
-        if pm.ndim != 3:
-            raise ValueError("LPT 2 only works in 3d")
+    potk = apply_transfer(rhok, fourier_space_laplace)
 
-        D1 = [1, 2, 0]
-        D2 = [2, 0, 1]
+    Pii = []
+    for d in range(pm.ndim):
+        t = apply_transfer(potk, fourier_space_neg_gradient(d, pm))
+        Pii1 = apply_transfer(t, fourier_space_neg_gradient(d, pm))
+        Pii1 = c2r(Pii1)
+        Pii.append(Pii1)
 
-        potk = apply_transfer(rhok, fourier_space_laplace)
-
-        Pii = []
-        for d in range(pm.ndim):
-            t = apply_transfer(potk, fourier_space_neg_gradient(d, pm))
-            Pii1 = apply_transfer(t, fourier_space_neg_gradient(d, pm))
-            Pii1 = c2r(Pii1)
-            Pii.append(Pii1)
-
-        source = None
-        for d in range(pm.ndim):
-            source1 = Pii[D1[d]] * Pii[D2[d]]
-            if source is None:
-                source = source1
-            else:
-                source = source + source1
-
-        for d in range(pm.ndim):
-            t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm))
-            Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm))
-            Pij1 = c2r(Pij1)
-            source1 = - Pij1 * Pij1
+    source = None
+    for d in range(pm.ndim):
+        source1 = Pii[D1[d]] * Pii[D2[d]]
+        if source is None:
+            source = source1
+        else:
             source = source + source1
 
-        source = (3.0 / 7) * source
+    for d in range(pm.ndim):
+        t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm))
+        Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm))
+        Pij1 = c2r(Pij1)
+        source1 = - Pij1 * Pij1
+        source = source + source1
 
-        return dict(rho_lpt2=source)
+    source = (3.0 / 7) * source
 
-@autooperator
-class induce_correlation:
-    ain = [
-            ('wnk',  'ComplexField'),
-          ]
-    aout = [
-            ('c', 'ComplexField'),
-           ]
+    return dict(rho_lpt2=source)
 
-    def main(self, wnk, powerspectrum, pm):
-        def tf(k):
-            k = sum(ki ** 2 for ki in k) ** 0.5
-            return (powerspectrum(k) / pm.BoxSize.prod()) ** 0.5
+@autooperator('wnk->c')
+def induce_correlation(wnk, powerspectrum, pm):
+    def tf(k):
+        k = sum(ki ** 2 for ki in k) ** 0.5
+        return (powerspectrum(k) / pm.BoxSize.prod()) ** 0.5
 
-        c = apply_transfer(wnk, tf)
-        return dict(c = c)
+    c = apply_transfer(wnk, tf)
+    return dict(c = c)
 
-@autooperator
-class lpt:
-    ain = [
-            ('rhok',  'RealField'),
-          ]
+@autooperator('rhok->dx1,dx2')
+def lpt(rhok, q, pm):
 
-    aout = [
-            ('dx1', '*'),
-            ('dx2', '*'),
-           ]
+    dx1 = lpt1(rhok, q, pm)
+    source2 = lpt2src(rhok, pm)
+    rhok2 = r2c(source2)
+    dx2 = lpt1(rhok2, q, pm)
 
-    def main(self, rhok, q, pm):
-
-        dx1 = lpt1(rhok, q, pm)
-        source2 = lpt2src(rhok, pm)
-        rhok2 = r2c(source2)
-        dx2 = lpt1(rhok2, q, pm)
-
-        return dict(dx1=dx1, dx2=dx2)
+    return dict(dx1=dx1, dx2=dx2)
 
 
-@autooperator
-class gravity:
-    ain = [ ('dx', '*'),
-          ]
-    aout = [ ('f', '*')]
+@autooperator('dx->f')
+def gravity(dx, q, pm):
+    from vmad.core.stdlib import watchpoint
+    x = q + dx
+    #def w(q): print('q', q)
+    #watchpoint(x, w)
+    #watchpoint(x, lambda x: print('x', q))
+    #watchpoint(dx, lambda dx: print('dx', dx))
+    layout = decompose(x, pm)
 
-    def main(self, dx, q, pm):
-        from vmad.core.stdlib import watchpoint
-        x = q + dx
-        #def w(q): print('q', q)
-        #watchpoint(x, w)
-        #watchpoint(x, lambda x: print('x', q))
-        #watchpoint(dx, lambda dx: print('dx', dx))
-        layout = decompose(x, pm)
+    xl = exchange(x, layout)
+    rho = paint(xl, 1.0, None, pm)
 
-        xl = exchange(x, layout)
-        rho = paint(xl, 1.0, None, pm)
+    # convert to 1 + delta
+    fac = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q))
 
-        # convert to 1 + delta
-        fac = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q))
+    rho = rho * fac
+    rhok = r2c(rho)
 
-        rho = rho * fac
-        rhok = r2c(rho)
+    p = apply_transfer(rhok, fourier_space_laplace)
 
-        p = apply_transfer(rhok, fourier_space_laplace)
+    r1 = []
+    for d in range(pm.ndim):
+        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+        dx1_r = c2r(dx1_c)
+        dx1l = readout(dx1_r, xl, None)
+        dx1 = gather(dx1l, layout)
+        r1.append(dx1)
 
-        r1 = []
-        for d in range(pm.ndim):
-            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
-            dx1_r = c2r(dx1_c)
-            dx1l = readout(dx1_r, xl, None)
-            dx1 = gather(dx1l, layout)
-            r1.append(dx1)
-
-        f = linalg.stack(r1, axis=-1)
-        return dict(f=f)
+    f = linalg.stack(r1, axis=-1)
+    return dict(f=f)
 
 def KickFactor(pt, ai, ac, af):
     return 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
@@ -344,80 +304,67 @@ def KickFactor(pt, ai, ac, af):
 def DriftFactor(pt, ai, ac, af):
     return 1 / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
 
-@autooperator
-class leapfrog:
-    ain = [ ('dx_i', '*'), ('p_i', '*') ]
-    aout = [ ('dx', '*'), ('p', '*'), ('f', '*') ]
+@autooperator('dx_i,p_i->dx,p,f')
+def leapfrog(dx_i, p_i, q, stages, pt, pm):
 
-    def main(self, dx_i, p_i, q, stages, pt, pm):
+    Om0 = pt.Om(1.0)
 
-        Om0 = pt.Om(1.0)
+    dx = dx_i
+    p = p_i
+    f = gravity(dx, q, pm)
 
-        dx = dx_i
-        p = p_i
+    for ai, af in zip(stages[:-1], stages[1:]):
+        ac = (ai * af) ** 0.5
+
+        # kick
+        dp = f * (KickFactor(pt, ai, ai, ac) * 1.5 * Om0)
+        p = p + dp
+
+        # drift
+        ddx = p * DriftFactor(pt, ai, ac, af)
+        dx = dx + ddx
+
+        # force
         f = gravity(dx, q, pm)
 
-        for ai, af in zip(stages[:-1], stages[1:]):
-            ac = (ai * af) ** 0.5
+        # kick
+        dp = f * (KickFactor(pt, ac, af, af) * 1.5 * Om0)
+        p = p + dp
 
-            # kick
-            dp = f * (KickFactor(pt, ai, ai, ac) * 1.5 * Om0)
-            p = p + dp
+    f = f * (1.5 * Om0)
+    return dict(dx=dx, p=p, f=f)
 
-            # drift
-            ddx = p * DriftFactor(pt, ai, ac, af)
-            dx = dx + ddx
+@autooperator('rhok->dx,p,f')
+def nbody(rhok, q, stages, cosmology, pm):
+    from fastpm.background import PerturbationGrowth
 
-            # force
-            f = gravity(dx, q, pm)
+    dx1, dx2 = lpt(rhok, q, pm)
 
-            # kick
-            dp = f * (KickFactor(pt, ac, af, af) * 1.5 * Om0)
-            p = p + dp
+    stages = numpy.array(stages)
+    mid = (stages[1:] * stages[:-1]) ** 0.5
+    support = numpy.concatenate([mid, stages])
+    support.sort()
+    pt = PerturbationGrowth(cosmology, a=support)
+    a = stages[0]
 
-        f = f * (1.5 * Om0)
-        return dict(dx=dx, p=p, f=f)
+    E = pt.E(a)
+    D1 = pt.D1(a)
+    D2 = pt.D2(a)
+    f1 = pt.f1(a)
+    f2 = pt.f2(a)
 
-@autooperator
-class nbody:
-    ain = [
-            ('rhok',  'RealField'),
-          ]
+    dx1 = dx1 * D1
+    dx2 = dx2 * D2
 
-    aout = [
-            ('dx', '*'), ('p', '*'), ('f', '*')
-           ]
+    p1 = dx1 * (a ** 2 * f1 * E)
+    p2 = dx2 * (a ** 2 * f2 * E)
 
-    def main(self, rhok, q, stages, cosmology, pm):
-        from fastpm.background import PerturbationGrowth
+    p = p1 + p2
+    dx = dx1 + dx2
 
-        dx1, dx2 = lpt(rhok, q, pm)
+    dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
 
-        stages = numpy.array(stages)
-        mid = (stages[1:] * stages[:-1]) ** 0.5
-        support = numpy.concatenate([mid, stages])
-        support.sort()
-        pt = PerturbationGrowth(cosmology, a=support)
-        a = stages[0]
-
-        E = pt.E(a)
-        D1 = pt.D1(a)
-        D2 = pt.D2(a)
-        f1 = pt.f1(a)
-        f2 = pt.f2(a)
-
-        dx1 = dx1 * D1
-        dx2 = dx2 * D2
-
-        p1 = dx1 * (a ** 2 * f1 * E)
-        p2 = dx2 * (a ** 2 * f2 * E)
-
-        p = p1 + p2
-        dx = dx1 + dx2
-
-        dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
-
-        return dict(dx=dx, p=p, f=f)
+    return dict(dx=dx, p=p, f=f)
 
 @operator
 class cdot:
