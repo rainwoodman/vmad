@@ -23,6 +23,8 @@ def test_autograd_annotations():
     assert 'n' not in example_func.ain
     assert 'y' in example_func.aout
 
+    y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
+
 def test_autograd_explicit():
     @autograd('x', '->', 'y')
     def example_func(x, n):
@@ -31,13 +33,17 @@ def test_autograd_explicit():
     assert 'n' not in example_func.ain
     assert 'y' in example_func.aout
 
+    y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
 def test_autograd_explicit_short():
     @autograd('x->y')
     def example_func(x, n):
         return dict(y=x)
+
     assert 'x' in example_func.ain
     assert 'n' not in example_func.ain
     assert 'y' in example_func.aout
+
+    y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
 
 def test_model_nested():
 

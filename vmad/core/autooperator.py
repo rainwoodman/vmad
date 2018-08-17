@@ -140,13 +140,20 @@ def autooperator(kls, argnames=None):
     return obj
 
 def _autograd(func, ain, aout):
+
+    def main(self, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    argnames = func.__code__.co_varnames[:func.__code__.co_argcount]
+
     prototype = type(func.__name__, (),
             dict(
                 ain=ain,
                 aout=aout,
-                main=func)
+                main=main,
+                )
             )
-    return autooperator(prototype)
+    return autooperator(prototype, argnames=argnames)
 
 def _parse_annotations(func):
     annotations = getattr(func, '__annotations__', {})
