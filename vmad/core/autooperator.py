@@ -90,7 +90,7 @@ class AutoOperator(Operator):
         tape = y['##tape']
 
         # create a new operator, because we need new primitives that points to this operator.
-        obj = autooperator(obj.prototype)
+        obj = AutoOperator(obj.prototype, argnames=obj.argnames)
         obj.__bound_tape__ = tape
         obj.__bound_model__ = m
 
@@ -116,7 +116,6 @@ class AutoOperator(Operator):
         obj = AutoOperator(obj.prototype, argnames=argnames)
         obj.__bound_model__ = m
         obj.hyperargs = hyperargs
-        obj.argnames = argnames
 
         return obj
 
@@ -126,7 +125,6 @@ def _autograd(func, ain, aout):
         return func(*args, **kwargs)
 
     argnames = func.__code__.co_varnames[:func.__code__.co_argcount]
-
     prototype = type(func.__name__, (),
             dict(
                 ain=ain,

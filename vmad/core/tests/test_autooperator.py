@@ -15,6 +15,12 @@ class example:
             x = add(x1=x, x2=x)
         return dict(y=x)
 
+@autooperator('x->y')
+def example_func(x, n):
+    for i in range(n):
+        x = add(x1=x, x2=x)
+    return dict(y=x)
+
 def test_autooperator_annotations():
     @autooperator
     def example_func(x :'*', n) -> 'y':
@@ -132,6 +138,28 @@ def test_autooperator_precompute():
     assert b == 4.0
 
     assert not hasattr(example, '__bound_tape__')
+    assert hasattr(op1, '__bound_tape__')
+
+    op1.build()
+
+def test_autooperator_precompute2():
+
+    op1 = example_func.precompute(n=2, x=1)
+    m = example_func.build(n=2)
+
+    with Builder() as m:
+        a = m.input('a')
+        b = example_func(a, 2)
+        c = op1(a, n=2)
+        m.output(b=b, c=c)
+
+    init = dict(a = 1.0)
+    (b,c), tape = m.compute(init=init, vout=['b', 'c'], monitor=print, return_tape=True)
+
+    assert b == c
+    assert b == 4.0
+
+    assert not hasattr(example_func, '__bound_tape__')
     assert hasattr(op1, '__bound_tape__')
 
     op1.build()
