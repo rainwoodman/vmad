@@ -45,6 +45,17 @@ def test_autooperator_explicit_short():
 
     y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
 
+def test_autooperator_explicit_short_space():
+    @autooperator(' x ->y')
+    def example_func(x, n):
+        return dict(y=x)
+
+    assert 'x' in example_func.ain
+    assert 'n' not in example_func.ain
+    assert 'y' in example_func.aout
+
+    y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
+
 def test_model_nested():
 
     with Builder() as m:

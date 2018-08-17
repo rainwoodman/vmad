@@ -158,8 +158,8 @@ def _parse_autograd_spec(args):
         left = spec[:split]
         right = spec[split+2:]
 
-        ain = left.split(',')
-        aout = right.split(',')
+        ain = [a.strip() for a in left.split(',')]
+        aout = [a.strip() for a in right.split(',')]
     else:
         split = args.index('->')
         ain = args[:split]
