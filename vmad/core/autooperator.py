@@ -1,3 +1,4 @@
+import inspect
 from .operator import _make_primitive, Operator, unbound, _to_ordereddict
 from .model import Builder
 from .context import Context
@@ -112,32 +113,12 @@ class AutoOperator(Operator):
                 ])
 
         # create a new operator, because we need new primitives that points to this operator.
-        obj = autooperator(obj.prototype, argnames=argnames)
+        obj = AutoOperator(obj.prototype, argnames=argnames)
         obj.__bound_model__ = m
         obj.hyperargs = hyperargs
         obj.argnames = argnames
 
         return obj
-
-def autooperator(kls, argnames=None):
-    """ Create an operator with automated differentiation.
-
-        ain : input arguments
-        aout : output arguments
-
-        main : function(model, ...) building the model;
-                the arguments are the input symbols
-                returns the dict of output symbols,
-                shall match the output arguments
-
-        see the example below in this file.
-    """
-
-    from collections import OrderedDict
-
-    obj = AutoOperator(kls, argnames)
-
-    return obj
 
 def _autograd(func, ain, aout):
 
@@ -153,7 +134,7 @@ def _autograd(func, ain, aout):
                 main=main,
                 )
             )
-    return autooperator(prototype, argnames=argnames)
+    return AutoOperator(prototype, argnames=argnames)
 
 def _parse_annotations(func):
     annotations = getattr(func, '__annotations__', {})
@@ -171,6 +152,7 @@ def _parse_autograd_spec(args):
     if len(args) == 1:
         if hasattr(args[0], '__call__'):
             return _parse_annotations(args[0])
+
         spec = args[0]
         split = spec.index('->')
         left = spec[:split]
@@ -184,18 +166,19 @@ def _parse_autograd_spec(args):
         aout = args[split + 1:]
     return ain, aout, None
 
-def autograd(*args):
-    """ autograd of a function that uses vmad.
+def autooperator(*args):
+    """ autooperator creates a operator from a prototype class
+        or a function that uses vmad to build a model.
 
-        The function must only use vmad operators
-        on the input autograd symbols.
+        The function or the main method must only use vmad operators
+        on the input autooperator symbols.
 
         1. Use Python 3 annotation syntax to declare
         the input and output arguments.
 
         .. code ::
 
-            @autograd
+            @autooperator
             def function(x : '*', y : '*', n) -> 'z':
                 ...
                 return dict(z = ....)
@@ -205,7 +188,7 @@ def autograd(*args):
 
         .. code ::
 
-            @autograd('x', 'y', '->', 'z')
+            @autooperator('x', 'y', '->', 'z')
             def function(x, y, n):
                 ...
                 return dict(z = ....)
@@ -214,18 +197,44 @@ def autograd(*args):
 
         .. code ::
 
-            @autograd('x, y->z')
+            @autooperator('x, y->z')
             def function(x, y, n):
                 ...
                 return dict(z = ....)
+
+        3. Use a class
+         Create an operator with automated differentiation.
+
+        ain : input arguments
+        aout : output arguments
+
+        main : function(model, ...) building the model;
+                the arguments are the input symbols
+                returns the dict of output symbols,
+                shall match the output arguments
+
+        see the example below in this file.
+
+            @autooperator
+            class function:
+                ain = 'x', 'y'
+                aout = 'z'
+                def main(model, x, y, n):
+                    ...
+                    return dict(z = ....)
+
     """
+    if inspect.isclass(args[0]):
+        return AutoOperator(args[0], argnames=None)
+
     ain, aout, func = _parse_autograd_spec(args)
+    def wrapped(func):
+        return _autograd(func, ain, aout)
+
     if func is None:
-        def wrapped(func):
-            return _autograd(func, ain, aout)
         return wrapped
     else:
-        return _autograd(func, ain, aout)
+        return wrapped(func)
 
 def _build(obj, kwargs):
     if hasattr(obj, '__bound_model__'):
