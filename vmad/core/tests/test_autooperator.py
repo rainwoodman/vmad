@@ -31,6 +31,14 @@ def test_autograd_explicit():
     assert 'n' not in example_func.ain
     assert 'y' in example_func.aout
 
+def test_autograd_explicit_short():
+    @autograd('x->y')
+    def example_func(x, n):
+        return dict(y=x)
+    assert 'x' in example_func.ain
+    assert 'n' not in example_func.ain
+    assert 'y' in example_func.aout
+
 def test_model_nested():
 
     with Builder() as m:

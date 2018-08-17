@@ -140,19 +140,6 @@ def autooperator(kls, argnames=None):
     return obj
 
 def _autograd(func, ain, aout):
-    annotations = getattr(func, '__annotations__', {})
-    if len(annotations) == 0:
-        if ain is None or aout is None:
-            raise ValueError("Use annotations or give ain and aout")
-    else:
-        if ain is not None or aout is not None:
-            raise ValueError("Use annotations or give ain and aout, but not both")
-        ain = [
-            (key, value)
-            for key, value in annotations.items() if key != 'return'
-        ]
-        aout = annotations['return']
-
     prototype = type(func.__name__, (),
             dict(
                 ain=ain,
@@ -160,6 +147,35 @@ def _autograd(func, ain, aout):
                 main=func)
             )
     return autooperator(prototype)
+
+def _parse_annotations(func):
+    annotations = getattr(func, '__annotations__', {})
+    if len(annotations) == 0:
+        raise ValueError("Must provide ain, aout or function annotations. see docstring of autograd")
+    ain = [
+        (key, value)
+        for key, value in annotations.items() if key != 'return'
+    ]
+    aout = annotations['return']
+
+    return ain, aout, func
+
+def _parse_autograd_spec(args):
+    if len(args) == 1:
+        if hasattr(args[0], '__call__'):
+            return _parse_annotations(args[0])
+        spec = args[0]
+        split = spec.index('->')
+        left = spec[:split]
+        right = spec[split+2:]
+
+        ain = left.split(',')
+        aout = right.split(',')
+    else:
+        split = args.index('->')
+        ain = args[:split]
+        aout = args[split + 1:]
+    return ain, aout, None
 
 def autograd(*args):
     """ autograd of a function that uses vmad.
@@ -178,7 +194,7 @@ def autograd(*args):
                 return dict(z = ....)
 
         2. Explicitly provide the lis of input and output
-           arguments
+           arguments.
 
         .. code ::
 
@@ -187,17 +203,22 @@ def autograd(*args):
                 ...
                 return dict(z = ....)
 
-    """
-    if len(args) == 1:
-        [func] = args
-        return _autograd(func, None, None)
+        or 
 
-    split = args.index('->')
-    ain = args[:split]
-    aout = args[split + 1:]
-    def wrapped(func):
+        .. code ::
+
+            @autograd('x, y->z')
+            def function(x, y, n):
+                ...
+                return dict(z = ....)
+    """
+    ain, aout, func = _parse_autograd_spec(args)
+    if func is None:
+        def wrapped(func):
+            return _autograd(func, ain, aout)
+        return wrapped
+    else:
         return _autograd(func, ain, aout)
-    return wrapped
 
 def _build(obj, kwargs):
     if hasattr(obj, '__bound_model__'):
