@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from vmad.core.model import Builder
-from vmad.core.autooperator import autooperator
+from vmad.core.autooperator import autooperator, autograd
 from vmad.lib.linalg import add
 
 @autooperator
@@ -14,6 +14,22 @@ class example:
         for i in range(n):
             x = add(x1=x, x2=x)
         return dict(y=x)
+
+def test_autograd_annotations():
+    @autograd
+    def example_func(x :'*', n) -> 'y':
+        return dict(y=x)
+    assert 'x' in example_func.ain
+    assert 'n' not in example_func.ain
+    assert 'y' in example_func.aout
+
+def test_autograd_explicit():
+    @autograd('x', '->', 'y')
+    def example_func(x, n):
+        return dict(y=x)
+    assert 'x' in example_func.ain
+    assert 'n' not in example_func.ain
+    assert 'y' in example_func.aout
 
 def test_model_nested():
 

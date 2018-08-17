@@ -139,6 +139,66 @@ def autooperator(kls, argnames=None):
 
     return obj
 
+def _autograd(func, ain, aout):
+    annotations = getattr(func, '__annotations__', {})
+    if len(annotations) == 0:
+        if ain is None or aout is None:
+            raise ValueError("Use annotations or give ain and aout")
+    else:
+        if ain is not None or aout is not None:
+            raise ValueError("Use annotations or give ain and aout, but not both")
+        ain = [
+            (key, value)
+            for key, value in annotations.items() if key != 'return'
+        ]
+        aout = annotations['return']
+
+    prototype = type(func.__name__, (),
+            dict(
+                ain=ain,
+                aout=aout,
+                main=func)
+            )
+    return autooperator(prototype)
+
+def autograd(*args):
+    """ autograd of a function that uses vmad.
+
+        The function must only use vmad operators
+        on the input autograd symbols.
+
+        1. Use Python 3 annotation syntax to declare
+        the input and output arguments.
+
+        .. code ::
+
+            @autograd
+            def function(x : '*', y : '*', n) -> 'z':
+                ...
+                return dict(z = ....)
+
+        2. Explicitly provide the lis of input and output
+           arguments
+
+        .. code ::
+
+            @autograd('x', 'y', '->', 'z')
+            def function(x, y, n):
+                ...
+                return dict(z = ....)
+
+    """
+    if len(args) == 1:
+        [func] = args
+        return _autograd(func, None, None)
+
+    split = args.index('->')
+    ain = args[:split]
+    aout = args[split + 1:]
+    def wrapped(func):
+        return _autograd(func, ain, aout)
+    return wrapped
+
 def _build(obj, kwargs):
     if hasattr(obj, '__bound_model__'):
         m = obj.__bound_model__
