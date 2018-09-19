@@ -10,12 +10,19 @@ class SymbolCollection(dict):
         self.zero = ZeroLiteral()
         self._max_ref_id = {}
 
-        for record in tape:
-            node = record.node
-            for ref in node.varin.values():
+        def _visit_ref(ref):
+            if isinstance(ref, ListRef):
+                for r1 in ref:
+                    _visit_ref(r1)
+            else:
                 self._max_ref_id[ref.symbol] = max(
                     self._max_ref_id.get(ref.symbol, 0), ref.ref_id
                     )
+        for record in tape:
+            node = record.node
+            for ref in node.varin.values():
+                _visit_ref(ref)
+
 
     def add(self, var):
         self[var._name] = var
