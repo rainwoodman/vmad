@@ -144,10 +144,25 @@ class Test_stack(BaseVectorTest):
 class Test_take(BaseVectorTest):
 
     x = numpy.arange(10)
-    y = numpy.array(2)
+    y = numpy.array(4)
 
     def model(self, x):
-        return linalg.take(x, 2, axis=0)
+        return linalg.sum(linalg.take(x, [2, 2], axis=0), axis=0)
+
+from vmad.core.stdlib import watchpoint
+class Test_take_vector(BaseVectorTest):
+
+    x = numpy.arange(10)
+    y = numpy.array(2)
+    def model(self, x):
+        a = linalg.take(x, [[2, 2], [2, 2]], axis=0)
+        b = linalg.take(a, 0, axis=0)
+        c = linalg.take(b, 0, axis=0)
+        #d = linalg.take(b, 0, axis=0)
+    #    watchpoint(b, lambda b:print('b=', b))
+    #    watchpoint(c, lambda c:print('c=', c))
+    #    watchpoint(d, lambda d:print('d=', d))
+        return c
 
 class Test_sumat(BaseVectorTest):
     x = numpy.arange(10).reshape(5, 2)

@@ -32,6 +32,7 @@ class Tape(list):
 
     def append(self, node, impl_kwargs):
         assert not self._completed
+
         list.append(self, Record(node, impl_kwargs))
 
     def get_vjp_vout(self):
