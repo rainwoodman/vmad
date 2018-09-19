@@ -200,6 +200,27 @@ class concatenate:
         return dict(y_=numpy.concatenate(x_, axis=axis))
 
 @operator
+class transpose:
+    ain = {'x' : 'ndarray',}
+    aout = {'y' : 'ndarray'}
+
+    def apl(node, x, axes):
+        return dict(y=numpy.transpose(x, axes))
+
+    def rcd(node, x, axes, y):
+        return dict(axes=axes)
+
+    def vjp(node, _y, axes):
+        inverse = [0] * len(axes)
+        for i, a in enumerate(axes):
+            inverse[a] = i
+        _x = _y.transpose(inverse)
+        return dict(_x=_x)
+
+    def jvp(node, x_, axes):
+        return dict(y_=numpy.transpose(x_, axes))
+
+@operator
 class reshape:
     ain  = {'x' : '*'}
     aout = {'y': '*'}

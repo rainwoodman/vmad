@@ -174,6 +174,16 @@ class Test_concatenate(BaseVectorTest):
         b = linalg.concatenate([x, x], axis=1)
         return b
 
+class Test_transpose(BaseVectorTest):
+
+    x = numpy.arange(10).reshape(5, 2)
+    y = numpy.transpose(x, (1, 0))
+
+    def model(self, x):
+        #a = linalg.concatenate([x, x], axis=0)
+        b = linalg.transpose(x, (1, 0))
+        return b
+
 class Test_sumat(BaseVectorTest):
     x = numpy.arange(10).reshape(5, 2)
     at = [0, 1, 3]
