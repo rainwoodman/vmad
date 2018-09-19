@@ -41,6 +41,7 @@ class Context(dict):
         for key in toremove:
             self.pop(key)
 
+    @classmethod
     def result_used(self, node):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
