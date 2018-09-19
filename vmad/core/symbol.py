@@ -85,9 +85,6 @@ class Ref(object):
     def __repr__(self):
         return "&[%s:%d]" % (repr(self.symbol), self.ref_id)
 
-    def is_last_ref(self):
-        return self.ref_id == len(self.symbol._references)
-
     def get_symbol_names(self):
         """ Returns a list of symbol names that are referenced by
             this object, recursively

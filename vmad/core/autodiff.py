@@ -5,23 +5,39 @@ class SymbolCollection(dict):
     """ A dictionary to look up collected symbols generated
         during the autodiff
     """
-    def __init__(self, model):
+    def __init__(self, model, tape):
         self.model = model
         self.zero = ZeroLiteral()
+        self._max_ref_id = {}
+
+        for record in tape:
+            node = record.node
+            for ref in node.varin.values():
+                self._max_ref_id[ref.symbol] = max(
+                    self._max_ref_id.get(ref.symbol, 0), ref.ref_id
+                    )
+
     def add(self, var):
         self[var._name] = var
         return var
 
     def add_vjp(self, var, ref_id=None):
-        # there can be many versions of vjp with distinct values.
         if ref_id is None:
             var_p = Symbol(var._vjp_name, model=self.model)
+        # there can be many versions of vjp with distinct values.
         else:
+            # first occurance, must have the max ref_id.
             var_p = Symbol(var._vjp_name + '#%d' % ref_id, model=self.model)
         return self.add(var_p)
 
     def add_jvp(self, var):
         return self.add(Symbol(var._jvp_name, model=self.model))
+
+    def is_last_ref(self, var, ref_id):
+        if ref_id == self._max_ref_id[var]:
+            return True
+
+        return False
 
     def get_vjp(self, var, ref_id=None):
         if ref_id is None:
@@ -61,10 +77,10 @@ def create_output_vjp(ref, symbols):
     if isinstance(var, Literal):
         return None
 
-    if ref.is_last_ref():
-        # largest reference_id, must be the
-        # first time seeing the partial derivative
-        # define the symbol for the full derivative
+    # ref id is used to distinguish the first
+    # time seeing a variable; when we will
+    # create an unversioned gradient symbol.
+    if symbols.is_last_ref(var, ref.ref_id):
         return symbols.add_vjp(var)
     else:
         return symbols.add_vjp(var, ref.ref_id)
@@ -84,7 +100,7 @@ def connect_output_vjp(ref, symbols):
         return
 
     # accummulate the partials
-    if not ref.is_last_ref():
+    if not symbols.is_last_ref(var, ref.ref_id):
         var_f = symbols.get_vjp(var)
         var_p = symbols.get_vjp(var, ref.ref_id)
         # create a new symbol for the result, with the same name
@@ -125,7 +141,7 @@ def create_input_vjp(var, symbols):
 def vjpmodel(tape):
     """ generate a vector jacobian product model based on a tape """
     model = type(tape.model)()
-    symbols = SymbolCollection(model)
+    symbols = SymbolCollection(model, tape)
 
     for var in tape.model._vout:
         model.input(symbols.add_vjp(var))
@@ -167,7 +183,7 @@ def vjpmodel(tape):
 def jvpmodel(tape):
     """ generate a jacobian vector product model based on a tape """
     model = type(tape.model)()
-    symbols = SymbolCollection(model)
+    symbols = SymbolCollection(model, tape)
 
     for var in tape.model._vin:
         model.input(symbols.add_jvp(var))

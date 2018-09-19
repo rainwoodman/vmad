@@ -29,6 +29,11 @@ def test_model_partial():
 def test_model_unused():
     with Builder() as m:
         a, b = m.input('a', 'b')
+        # use a twice with a dependency
+        # triggers problem with last_ref in autodiff;
+        # because this line is not executed by the context;
+        # last_ref is not True for the last ref on the tape.
+        d = (a + b) + a
         m.output(c=1.0)
 
     init = dict(a=3, b=4)
