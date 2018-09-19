@@ -164,6 +164,16 @@ class Test_take_vector(BaseVectorTest):
     #    watchpoint(d, lambda d:print('d=', d))
         return c
 
+class Test_concatenate(BaseVectorTest):
+
+    x = numpy.arange(10).reshape(5, 2)
+    y = numpy.concatenate([x, x], axis=1)
+
+    def model(self, x):
+        #a = linalg.concatenate([x, x], axis=0)
+        b = linalg.concatenate([x, x], axis=1)
+        return b
+
 class Test_sumat(BaseVectorTest):
     x = numpy.arange(10).reshape(5, 2)
     at = [0, 1, 3]

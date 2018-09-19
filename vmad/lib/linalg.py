@@ -152,17 +152,52 @@ class take:
         return dict(y=numpy.take(x, i, axis=axis))
 
     def rcd(node, x, i, axis, y):
-        return dict(xshape = numpy.shape(x), i=i, axis=axis)
+        return dict(xshape = numpy.shape(x), i=numpy.array(i, dtype='i8'), axis=axis)
 
     def vjp(node, _y, i, axis, xshape):
         _x = numpy.zeros(xshape)
         _x = numpy.swapaxes(_x, 0, axis)
-        _x[i] = _y
+
+        # the vectorization in ufunc.at differ from what we expect
+        # so flatten the shape of _y to call at reduction
+        _y_newshape = [-1] + list(_y.shape[len(i.shape):])
+
+        # one element can show up several times, add all gradients.
+        numpy.add.at(_x, i.flat, _y.reshape(_y_newshape))
         _x = numpy.swapaxes(_x, 0, axis)
         return dict(_x=_x)
 
     def jvp(node, x_, i, axis):
         return dict(y_=numpy.take(x_, i, axis=axis))
+
+@operator
+class concatenate:
+    ain = {'x' : '*',}
+    aout = {'y' : 'ndarray'}
+
+    def apl(node, x, axis):
+        if axis is None:
+            raise AssertionError('Assertion error. axis keyword in linalg.take cannot be None.')
+        return dict(y=numpy.concatenate(x, axis=axis))
+
+    def rcd(node, x, axis, y):
+        return dict(xshapes=[numpy.shape(x1) for x1 in x], axis=axis)
+
+    def vjp(node, _y, axis, xshapes):
+        # chopping of _y along the axis will do
+        _y = numpy.swapaxes(_y, 0, axis)
+        offset = 0
+        _x = []
+
+        for xshape in xshapes:
+            _x1 = _y[offset:offset+xshape[axis]]
+            _x.append(numpy.swapaxes(_x1, 0, axis))
+            offset = offset + xshape[axis]
+
+        return dict(_x=_x)
+
+    def jvp(node, x_, axis):
+        return dict(y_=numpy.concatenate(x_, axis=axis))
 
 @operator
 class reshape:
