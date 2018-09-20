@@ -121,7 +121,7 @@ class AutoOperator(Operator):
 
 def _autograd(func, ain, aout):
 
-    def main(self, *args, **kwargs):
+    def main(__unused_argument_3333__, *args, **kwargs):
         return func(*args, **kwargs)
 
     argnames = func.__code__.co_varnames[:func.__code__.co_argcount]

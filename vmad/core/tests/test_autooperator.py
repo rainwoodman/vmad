@@ -40,6 +40,7 @@ def test_autooperator_explicit():
     assert 'y' in example_func.aout
 
     y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
+
 def test_autooperator_explicit_short():
     @autooperator('x->y')
     def example_func(x, n):
@@ -61,6 +62,24 @@ def test_autooperator_explicit_short_space():
     assert 'y' in example_func.aout
 
     y = example_func.build(n=2).compute(vout='y', init=dict(x=1))
+
+def test_autooperator_as_member():
+    class MyType(object):
+        def __init__(self):
+            self.n = 3
+
+        @autooperator('x->y')
+        def example_func(self, x):
+            return dict(y=x * self.n)
+
+    obj = MyType()
+    with Builder() as m:
+        a = m.input('a')
+        b = obj.example_func(a)
+        m.output(b=b)
+
+    y = m.compute(vout='b', init=dict(a=1))
+    assert y == 3
 
 def test_model_nested():
 
