@@ -388,3 +388,121 @@ class cdot:
     def jvp(node, x1_, x2_, x1, x2):
         return dict(y_=x1.cdot(x2_).real + x2.cdot(x1_).real)
 
+class FastPMSimulation:
+    def __init__(self, stages, cosmology, pm, q=None):
+        from fastpm.background import PerturbationGrowth
+
+        if q is None:
+            q = pm.generate_uniform_grid()
+
+        stages = numpy.array(stages)
+        mid = (stages[1:] * stages[:-1]) ** 0.5
+        support = numpy.concatenate([mid, stages])
+        support.sort()
+        pt = PerturbationGrowth(cosmology, a=support)
+
+        self.stages = stages
+        self.pt = pt
+        self.pm = pm
+        self.q = q
+
+    def KickFactor(self, ai, ac, af):
+        pt = self.pt
+        return 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
+
+    def DriftFactor(self, ai, ac, af):
+        pt = self.pt
+        return 1 / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
+
+    @autooperator('rhok->dx, p')
+    def firststep(self, rhok):
+        q = self.q
+        pm = self.pm
+        pt = self.pt
+        a = self.stages[0]
+
+        dx1, dx2 = lpt(rhok, q, pm)
+
+        E = pt.E(a)
+        D1 = pt.D1(a)
+        D2 = pt.D2(a)
+        f1 = pt.f1(a)
+        f2 = pt.f2(a)
+
+        dx1 = dx1 * D1
+        dx2 = dx2 * D2
+
+        p1 = dx1 * (a ** 2 * f1 * E)
+        p2 = dx2 * (a ** 2 * f2 * E)
+
+        p = p1 + p2
+        dx = dx1 + dx2
+        return dict(dx=dx, p=p)
+
+    @autooperator('dx->f,potk')
+    def gravity(self, dx):
+        q = self.q
+        pm = self.pm
+
+        x = q + dx
+
+        layout = decompose(x, pm)
+
+        xl = exchange(x, layout)
+        rho = paint(xl, 1.0, None, pm)
+
+        # convert to 1 + delta
+        fac = 1.0 * pm.Nmesh.prod() / pm.comm.allreduce(len(q))
+
+        rho = rho * fac
+        rhok = r2c(rho)
+
+        p = apply_transfer(rhok, fourier_space_laplace)
+
+        r1 = []
+        for d in range(pm.ndim):
+            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+            dx1_r = c2r(dx1_c)
+            dx1l = readout(dx1_r, xl, None)
+            dx1 = gather(dx1l, layout)
+            r1.append(dx1)
+
+        f = linalg.stack(r1, axis=-1)
+        return dict(f=f, potk=p)
+
+    @autooperator('rhok->dx,p,f')
+    def run(self, rhok):
+
+        dx, p = self.firststep(rhok)
+
+        pt = self.pt
+        pm = self.pm
+        stages = self.stages
+        q = self.q
+
+        Om0 = pt.Om(1.0)
+
+        f, potk = self.gravity(dx)
+
+        for ai, af in zip(stages[:-1], stages[1:]):
+            ac = (ai * af) ** 0.5
+
+            # kick
+            dp = f * (self.KickFactor(ai, ai, ac) * 1.5 * Om0)
+            p = p + dp
+
+            # drift
+            ddx = p * self.DriftFactor(ai, ac, af)
+            dx = dx + ddx
+
+            # force
+            f, potk = self.gravity(dx)
+
+            # kick
+            dp = f * (self.KickFactor(ac, af, af) * 1.5 * Om0)
+            p = p + dp
+
+        f = f * (1.5 * Om0)
+        return dict(dx=dx, p=p, f=f)
+
+

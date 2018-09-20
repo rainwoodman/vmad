@@ -258,3 +258,22 @@ class Test_nbody(BaseScalarTest):
         dx, p, f = fastpm.nbody(fastpm.r2c(x), q=self.pos, stages=[0.1, 0.5, 1.0], pm=self.pm, cosmology=Planck15)
         return linalg.stack([dx, p, f], axis=-1)
 
+class Test_fastpm(BaseScalarTest):
+    to_scalar = staticmethod(linalg.to_scalar)
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
+
+    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+
+    pos = pm.generate_uniform_particle_grid(shift=0.5)
+    y = NotImplemented
+    x_ = create_bases(x)
+
+    epsilon = 1e-4
+    def model(self, x):
+        from nbodykit.cosmology import Planck15
+        sim = fastpm.FastPMSimulation(pm=self.pm, cosmology=Planck15, stages=[0.1, 0.5, 1.0], q=self.pos)
+
+        dx, p, f = sim.run(fastpm.r2c(x))
+        return linalg.stack([dx, p, f], axis=-1)
+
