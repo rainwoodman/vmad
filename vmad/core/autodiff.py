@@ -14,10 +14,11 @@ class SymbolCollection(dict):
             if isinstance(ref, ListRef):
                 for r1 in ref:
                     _visit_ref(r1)
-            else:
-                self._max_ref_id[ref.symbol] = max(
-                    self._max_ref_id.get(ref.symbol, 0), ref.ref_id
+            elif isinstance(ref.symbol, Symbol):
+                self._max_ref_id[ref.symbol._name] = max(
+                    self._max_ref_id.get(ref.symbol._name, 0), ref.ref_id
                     )
+
         for record in tape:
             node = record.node
             for ref in node.varin.values():
@@ -41,7 +42,7 @@ class SymbolCollection(dict):
         return self.add(Symbol(var._jvp_name, model=self.model))
 
     def is_last_ref(self, var, ref_id):
-        if ref_id == self._max_ref_id[var]:
+        if var._name not in self._max_ref_id or ref_id == self._max_ref_id[var._name]:
             return True
 
         return False
