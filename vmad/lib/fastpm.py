@@ -266,7 +266,7 @@ def lpt(rhok, q, pm):
     return dict(dx1=dx1, dx2=dx2)
 
 
-@autooperator('dx->f')
+@autooperator('dx->f,potk')
 def gravity(dx, q, pm):
     from vmad.core.stdlib import watchpoint
     x = q + dx
@@ -296,7 +296,7 @@ def gravity(dx, q, pm):
         r1.append(dx1)
 
     f = linalg.stack(r1, axis=-1)
-    return dict(f=f)
+    return dict(f=f, potk=p)
 
 def KickFactor(pt, ai, ac, af):
     return 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
@@ -311,7 +311,7 @@ def leapfrog(dx_i, p_i, q, stages, pt, pm):
 
     dx = dx_i
     p = p_i
-    f = gravity(dx, q, pm)
+    f, potk = gravity(dx, q, pm)
 
     for ai, af in zip(stages[:-1], stages[1:]):
         ac = (ai * af) ** 0.5
@@ -325,7 +325,7 @@ def leapfrog(dx_i, p_i, q, stages, pt, pm):
         dx = dx + ddx
 
         # force
-        f = gravity(dx, q, pm)
+        f, potk = gravity(dx, q, pm)
 
         # kick
         dp = f * (KickFactor(pt, ac, af, af) * 1.5 * Om0)
@@ -334,18 +334,10 @@ def leapfrog(dx_i, p_i, q, stages, pt, pm):
     f = f * (1.5 * Om0)
     return dict(dx=dx, p=p, f=f)
 
-@autooperator('rhok->dx,p,f')
-def nbody(rhok, q, stages, cosmology, pm):
-    from fastpm.background import PerturbationGrowth
+@autooperator('rhok->dx,p')
+def firststep(rhok, q, a, pt, pm):
 
     dx1, dx2 = lpt(rhok, q, pm)
-
-    stages = numpy.array(stages)
-    mid = (stages[1:] * stages[:-1]) ** 0.5
-    support = numpy.concatenate([mid, stages])
-    support.sort()
-    pt = PerturbationGrowth(cosmology, a=support)
-    a = stages[0]
 
     E = pt.E(a)
     D1 = pt.D1(a)
@@ -361,6 +353,19 @@ def nbody(rhok, q, stages, cosmology, pm):
 
     p = p1 + p2
     dx = dx1 + dx2
+    return dict(dx=dx, p=p)
+
+@autooperator('rhok->dx,p,f')
+def nbody(rhok, q, stages, cosmology, pm):
+    from fastpm.background import PerturbationGrowth
+
+    stages = numpy.array(stages)
+    mid = (stages[1:] * stages[:-1]) ** 0.5
+    support = numpy.concatenate([mid, stages])
+    support.sort()
+    pt = PerturbationGrowth(cosmology, a=support)
+
+    dx, p = firststep(rhok, q, stages[0], pt, pm)
 
     dx, p, f = leapfrog(dx, p, q, stages, pt, pm)
 
