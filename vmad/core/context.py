@@ -104,10 +104,10 @@ class Context(dict):
             kwargs[argname] = value
 
         if _raise_internal_errors:
-            r = node.call(**kwargs)
+            r = node.call(kwargs)
         else:
             try:
-                r = node.call(**kwargs)
+                r = node.call(kwargs)
             except Exception as e:
                 raise makeExecutionError(
                     "Error computing node : %s" % (node), e)
