@@ -67,9 +67,6 @@ class unpack_complex:
     def vjp(node, _real, _imag):
         return dict(_x = _real + _imag * 1j)
 
-    def jvp(node, x_):
-        return dict(real_ = x_.real, imag_ = x_.imag)
-
 @operator
 class pack_complex:
     ain = [('real', '*'), ('imag', '*')]
@@ -81,9 +78,6 @@ class pack_complex:
     def vjp(node, _y):
         return dict(_real = _y.real, _imag = _y.imag)
 
-    def jvp(node, real_, imag_):
-        return dict(y_ = real_ + imag_ * 1j)
-
 @operator
 class conj:
     ain = 'x'
@@ -94,9 +88,6 @@ class conj:
 
     def vjp(node, _y):
         return numpy.conj(_y)
-
-    def jvp(node, x_):
-        return numpy.conj(x_)
 
 @operator
 class to_scalar:
@@ -123,9 +114,6 @@ class copy:
     def vjp(node, _y):
         return dict(_x = numpy.copy(_y))
 
-    def jvp(node, x_):
-        return dict(y_ = numpy.copy(x_))
-
 @operator
 class stack:
     ain = {'x' : 'ndarray',}
@@ -137,9 +125,6 @@ class stack:
     def vjp(node, _y, axis):
         return dict(_x=[numpy.take(_y, i, axis=axis)
                 for i in range(numpy.shape(_y)[axis])])
-
-    def jvp(node, x_, axis):
-        return dict(y_=numpy.stack(x_, axis=axis))
 
 @operator
 class take:
@@ -167,9 +152,6 @@ class take:
         _x = numpy.swapaxes(_x, 0, axis)
         return dict(_x=_x)
 
-    def jvp(node, x_, i, axis):
-        return dict(y_=numpy.take(x_, i, axis=axis))
-
 @operator
 class concatenate:
     ain = {'x' : '*',}
@@ -196,9 +178,6 @@ class concatenate:
 
         return dict(_x=_x)
 
-    def jvp(node, x_, axis):
-        return dict(y_=numpy.concatenate(x_, axis=axis))
-
 @operator
 class transpose:
     ain = {'x' : 'ndarray',}
@@ -217,9 +196,6 @@ class transpose:
         _x = _y.transpose(inverse)
         return dict(_x=_x)
 
-    def jvp(node, x_, axes):
-        return dict(y_=numpy.transpose(x_, axes))
-
 @operator
 class reshape:
     ain  = {'x' : '*'}
@@ -233,9 +209,6 @@ class reshape:
 
     def vjp(node, _y, xshape):
         return dict(_x=_y.reshape(xshape))
-
-    def jvp(node, x_, shape):
-        return dict(y_=x_.reshape(shape))
 
 @operator
 class sumat:
@@ -256,9 +229,6 @@ class sumat:
         _x = numpy.ones(xshape)
         N = numpy.diff(numpy.concatenate([at, [xshape[axis]]], axis=0))
         return numpy.repeat(_y, N, axis=axis)
-
-    def jvp(node, x_, at, axis):
-        return numpy.add.reduceat(x_, at, axis=axis, dtype='f8')
 
 @operator
 class sum:
@@ -282,7 +252,4 @@ class sum:
 
         _x *= _y
         return dict(_x = _x)
-
-    def jvp(node, x_, xshape, axis):
-        return numpy.sum(x_, axis=axis, dtype='f8')
 
