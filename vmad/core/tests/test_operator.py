@@ -273,6 +273,38 @@ def test_operator_multi_out():
     assert c_ == 1
     assert d_ == 2
 
+def test_operator_default_jvp():
+    @operator
+    class op:
+        ain = 'x'
+        aout = 'y1'
+
+        def apl(node, x):
+            return dict(y1=x * 2)
+        def vjp(node, _y1):
+            return dict(_x = _y1 * 2)
+
+    with Builder() as m:
+        a = m.input('a')
+        t1 = op(x=a)
+        m.output(c=t1)
+
+    init = dict(a=3)
+
+    c, tape = m.compute(init=init, vout='c', return_tape=True)
+    assert c == 6
+
+    vjp = tape.get_vjp()
+    init = dict(_c=1)
+    _a = vjp.compute(init=init, vout='_a', monitor=print)
+    assert _a == 2
+
+    jvp = tape.get_jvp()
+    init = dict(a_=1)
+    c_ = jvp.compute(init=init, vout=('c_'), monitor=print)
+    assert c_ == 2
+
+
 def test_operator_multi_out_unused():
     @operator
     class op:

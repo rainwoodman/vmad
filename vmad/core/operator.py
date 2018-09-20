@@ -50,7 +50,16 @@ class Operator(object):
         if hasattr(self.prototype, 'jvp'):
             return _make_primitive(self, 'jvp', unbound(self.prototype.jvp))
         else:
-            return EmptyPrimitive
+            #return EmptyPrimitive
+            argnames_jvp = []
+
+            for argname in self.apl.argnames:
+                if argname in self.ain:
+                    argnames_jvp.append(argname + '_')
+                else:
+                    argnames_jvp.append(argname)
+
+            return _make_primitive(self, 'jvp', default_jvp, argnames=argnames_jvp)
 
 class InstanceOperator(Operator):
     def __init__(self, base, instance):
@@ -108,6 +117,37 @@ def record_copy_autodiff(node, **kwargs):
             record[argname] = value
 
     return record
+
+def default_jvp(node, **kwargs):
+    """ Calling apl on the jvp inputs.
+
+        This would be appropriate for many occasions.
+    """
+
+    apl = node.operator.apl
+    d = {}
+
+    # remove "_" from input variable names before calling apl
+    for argname, value in kwargs.items():
+        if argname.endswith('_'):
+            d[argname[:-1]] = value
+        else:
+            d[argname] = value
+
+    r = apl.impl(node, **d)
+
+    if not isinstance(r, dict):
+        # scalar output, no need to patch the names.
+        return r
+    else:
+        # add '_' to the output results before returning
+        r1 = {}
+        for argname, value in r.items():
+            if argname in apl.aout:
+                r1[argname + '_'] = value
+            else:
+                r1[argname] = value
+        return r1
 
 def unbound(method):
     if hasattr(method, 'im_func'):
