@@ -44,12 +44,23 @@ class Primitive:
     def __call__(self, *args, **kwargs):
         """ Creating a node and append it to the model's execution graph
 
+            This is the user interfacing API.
+
+            Internal code shall call create_node, which allows 'self' to be
+            a kwarg name.
+
+        """
+        return self.create_node(args, kwargs)
+
+    def create_node(self, args, kwargs):
+        """ Creating a node and append it to the model's execution graph
+
             The model is inferred from the input arguments
 
             kwargs['__stacklevel__'] is the adjustment for stacklevel
             -1 is the caller. -2 is the caller of the caller
-        """
 
+        """
         # remember the frame info
         stacklevel = kwargs.pop('__stacklevel__', -2)
         previous_frame = inspect.currentframe()

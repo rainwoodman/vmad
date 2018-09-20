@@ -203,7 +203,8 @@ def operator(kls):
     return opr
 
 def zerobypass(impl):
-    def zerobypassimpl(self, **kwargs):
+    def zerobypassimpl(__node__, **kwargs):
+        self = __node__
         ain = self.ain
         aout = self.aout
         if all(kwargs[argname] is 0 for argname in ain):
@@ -212,6 +213,7 @@ def zerobypass(impl):
                 d[argname] = 0
             return d
         return impl(self, **kwargs)
+    zerobypassimpl.original = impl
     return zerobypassimpl
 
 def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all):

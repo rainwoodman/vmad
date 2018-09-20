@@ -173,7 +173,7 @@ def vjpmodel(tape):
             if var_p is not None:
                 kwargs['_' + argname] = var_p
 
-        node = vjp_of_p(**kwargs)
+        vjp_of_p.create_node(args=[], kwargs=kwargs)
 
         # combine partial derivatives.
         for argname, ref in p.varin.items():
@@ -214,7 +214,7 @@ def jvpmodel(tape):
             jvp_var = create_output_jvp(var, symbols)
             kwargs[argname + '_'] = jvp_var
 
-        jvp_of_p(**kwargs)
+        jvp_of_p.create_node(args=[], kwargs=kwargs)
 
     # mark outputs
     for var in tape.model._vout:
