@@ -1,4 +1,4 @@
-from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List
+from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List, IgnoredGradient
 from .stdlib import terminal, add
 
 class SymbolCollection(dict):
@@ -84,7 +84,7 @@ def create_output_vjp(ref, symbols):
 
     # bypass literal arguments
     if isinstance(var, Literal):
-        return None
+        return IgnoredGradient
 
     # ref id is used to distinguish the first
     # time seeing a variable; when we will

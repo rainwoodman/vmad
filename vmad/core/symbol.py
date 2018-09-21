@@ -217,6 +217,22 @@ class ListRef(Ref):
             r = r.union(ref.get_symbol_names())
         return r
 
+class IgnoreSymbol(BaseSymbol):
+    """ A IgnoreSymbol is a placeholder for Literals in the autodiff
+        gradient propagation.
+    """
+    def __init__(self):
+        BaseSymbol.__init__(self)
+
+    def __repr__(self):
+        return "IGN"
+
+    # Never referenced; allow bypassing unused nodes.
+    def _has_reference(self):
+        return False
+
+IgnoredGradient = IgnoreSymbol()
+
 class Literal(BaseSymbol):
     """ A literal is a special symbol that does not resolve with a context.
 
