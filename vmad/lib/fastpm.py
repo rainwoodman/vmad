@@ -393,7 +393,7 @@ class FastPMSimulation:
         from fastpm.background import PerturbationGrowth
 
         if q is None:
-            q = pm.generate_uniform_grid()
+            q = pm.generate_uniform_particle_grid()
 
         stages = numpy.array(stages)
         mid = (stages[1:] * stages[:-1]) ** 0.5
