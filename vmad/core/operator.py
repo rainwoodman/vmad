@@ -20,7 +20,7 @@ class Operator(object):
 
 
     def __call__(self, *args, **kwargs):
-        return self.apl(*args, **kwargs)
+        return self.apl.create_node(args, kwargs)
 
     def __get__(self, instance, owner):
         if instance is not None:
@@ -68,6 +68,18 @@ class InstanceOperator(Operator):
 
     def __call__(self, *args, **kwargs):
         return self.base(self.instance, *args, **kwargs)
+
+    # FIXME: the build method is only supported on AutoOperator.
+    # but this doesn't distinguish if the base is an autooperator.
+    # solution 1 : allow build on an Operator.
+    # solution 2 : add InstanceAutoOperator.
+
+    def build(self, **kwargs):
+        # add the instance object to the kwargs
+        d = {}
+        d.update(kwargs)
+        d[self.base.argnames[0]] = self.instance
+        return self.base.build(**d)
 
     def __getattr__(self, attrname):
         return getattr(self.base, attrname)
