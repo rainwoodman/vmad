@@ -105,7 +105,7 @@ class div(binary):
         return dict(x1=x1, x2inv=x2inv)
 
     def vjp(node, _y, x1, x2inv):
-        return dict(_x1 = _y * x2,
+        return dict(_x1 = _y * x2inv,
                     _x2 = -_y * x1 * (x2inv * x2inv))
 
     def jvp(node, x1_, x2_, x1, x2inv):
