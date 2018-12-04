@@ -15,7 +15,7 @@ def create_bases(x):
         pm = x.pm
         # FIXME: remove this after pmesh 0.1.36
         def create_field(pm, data):
-            real = pm.create(mode='real')
+            real = pm.create(type='real')
             real[...] = data
             return real
         return [create_field(pm, i) for i in bases]
@@ -27,7 +27,7 @@ class Test_r2c_c2r(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
     y = x.cnorm()
     x_ = create_bases(x)
 
@@ -52,7 +52,7 @@ class Test_r2c_transfer_c2r(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
     y = x.r2c().apply(lambda k, v: transfer(k) * v).c2r().cnorm()
     x_ = create_bases(x)
 
@@ -70,8 +70,8 @@ class Test_cdot(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
-    x1 = pm.generate_whitenoise(seed=301, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
+    x1 = pm.generate_whitenoise(seed=301, unitary=True, type='real')
     y = (x.cdot(x1)) ** 2 * pm.Nmesh.prod() ** -2.
     x_ = create_bases(x)
 
@@ -88,7 +88,7 @@ class Test_paint_x(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     x = pm.generate_uniform_particle_grid(shift=0.1)
     y = (1 + mesh).cnorm()
@@ -106,7 +106,7 @@ class Test_decompose_paint_x(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     x = pm.generate_uniform_particle_grid(shift=0.1)
     y = (1 + mesh).cnorm()
@@ -125,7 +125,7 @@ class Test_decompose_exchange(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     x = pm.generate_uniform_particle_grid(shift=0.1)
     y = (1 + mesh).cnorm()
@@ -145,7 +145,7 @@ class Test_paint_mass(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.1)
     x = numpy.ones(len(pos))
@@ -163,7 +163,7 @@ class Test_readout_x(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    mesh = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    mesh = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     x = pm.generate_uniform_particle_grid(shift=0.5)
     y = (mesh.readout(x) ** 2).sum()
@@ -180,7 +180,7 @@ class Test_readout_mesh(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.5)
     y = (x.readout(pos) ** 2).sum()
@@ -197,7 +197,7 @@ class Test_lpt1(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.5)
     y = NotImplemented
@@ -214,7 +214,7 @@ class Test_lpt2src(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     y = NotImplemented
     x_ = create_bases(x)
@@ -229,7 +229,7 @@ class Test_lpt(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.5)
     y = NotImplemented
@@ -246,7 +246,7 @@ class Test_nbody(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.5)
     y = NotImplemented
@@ -263,7 +263,7 @@ class Test_fastpm(BaseScalarTest):
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
 
-    x = pm.generate_whitenoise(seed=300, unitary=True, mode='real')
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
 
     pos = pm.generate_uniform_particle_grid(shift=0.5)
     y = NotImplemented
