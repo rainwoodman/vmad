@@ -23,7 +23,7 @@ class as_complex_field:
     aout = {'y' : 'ComplexField'}
 
     def apl(node, x, pm):
-        y = pm.create(mode='complex')
+        y = pm.create(type='complex')
         y.real[...] = x[..., 0]
         y.imag[...] = x[..., 1]
         return dict(y=y)
@@ -33,7 +33,7 @@ class as_complex_field:
         return dict(_x=_x)
 
     def jvp(node, x_, pm):
-        y_ = pm.create(mode='complex')
+        y_ = pm.create(type='complex')
         y_.real[...] = x_[..., 0]
         y_.imag[...] = x_[..., 1]
         return dict(y_=y_)
@@ -46,10 +46,10 @@ class r2c:
     def apl(node, x):
         return dict(y=x.r2c(), pm=x.pm)
     def vjp(node, _y, pm):
-        _y = pm.create(mode='complex', value=_y)
+        _y = pm.create(type='complex', value=_y)
         return dict(_x=_y.r2c_vjp())
     def jvp(node, x_, pm):
-        x_ = pm.create(mode='real', value=x_)
+        x_ = pm.create(type='real', value=x_)
         return dict(y_=x_.r2c())
 
 @operator
@@ -60,10 +60,10 @@ class c2r:
     def apl(node, x):
         return dict(y=x.c2r(), pm=x.pm)
     def vjp(node, _y, pm):
-        _y = pm.create(mode='real', value=_y)
+        _y = pm.create(type='real', value=_y)
         return dict(_x=_y.c2r_vjp())
     def jvp(node, x_, pm):
-        x_ = pm.create(mode='complex', value=x_)
+        x_ = pm.create(type='complex', value=x_)
         return dict(y_=x_.c2r())
 
 @operator
@@ -96,7 +96,7 @@ class paint:
         return dict(mesh=mesh)
 
     def vjp(node, _mesh, x, mass, layout, pm):
-        _mesh = pm.create(mode='real', value=_mesh)
+        _mesh = pm.create(type='real', value=_mesh)
         _x, _mass = pm.paint_vjp(_mesh, x, layout=layout, mass=mass)
         return dict(
             _layout = 0,
@@ -130,7 +130,7 @@ class readout:
     def jvp(node, x_, mesh_, x, layout, layout_, mesh, pm, resampler=None):
         if mesh_ is 0: mesh_ = None
         if x_ is 0: x_ = None
-        mesh = pm.create(mode='real', value=mesh)
+        mesh = pm.create(type='real', value=mesh)
         value_ = mesh.readout_jvp(x, v_self=mesh_, v_pos=x_, layout=layout, resampler=resampler)
         return dict(value_=value_)
 
