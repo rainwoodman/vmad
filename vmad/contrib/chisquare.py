@@ -150,10 +150,11 @@ class EpochScheduler(dict):
         return args
 
 class Epoch(object):
-    def __init__(self, epoch):
+    def __init__(self, epoch, nepochs):
         self.epoch = epoch
+        self.nepochs = nepochs
     def __repr__(self):
-        return "Epoch %d" % self.epoch
+        return "Epoch %d / %d" % (self.epoch, self.nepochs)
 
 class MAPInversion:
     """ Inversion of a ChiSquareProblem with a ForwardOperator;
@@ -206,7 +207,7 @@ class MAPInversion:
         s1 = s0
         for epoch in epochs:
             if monitor_epoch:
-                monitor_epoch(Epoch(epoch))
+                monitor_epoch(Epoch(epoch, max(epochs) + 1))
 
             problem = self.get_problem(d, epoch)
 
