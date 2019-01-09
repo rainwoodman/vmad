@@ -176,7 +176,7 @@ class MAPInversion:
         self.schedule_problem = EpochScheduler()
 
     @classmethod
-    def create_like(kls, other):
+    def create_like(kls, other, epochs=None):
         """ create a new inversion that is a copy of other.
             notice that some of the attributes may be lost;
             not supposed to add new attributes.
@@ -188,8 +188,14 @@ class MAPInversion:
         self.optimizer = other.optimizer
         self.schedule_optimizer = EpochScheduler()
         self.schedule_problem = EpochScheduler()
-        self.schedule_optimizer.update(other.schedule_optimizer)
-        self.schedule_problem.update(other.schedule_problem)
+        if epochs is None:
+            self.schedule_optimizer.update(other.schedule_optimizer)
+            self.schedule_problem.update(other.schedule_problem)
+        else:
+            # only take the selected epochs
+            for i, epoch in enumerate(epochs):
+                self.schedule_optimizer[i] = other.schedule_optimizer.get_args(epoch)
+                self.schedule_problem[i] = other.schedule_problem.get_args(epoch)
         return self
 
     def apply(self, d, s0, epochs=None, monitor_epoch=None, monitor_progress=None):
@@ -201,8 +207,7 @@ class MAPInversion:
 
         """
         if epochs is None:
-            epochs = range(max(self.schedule_optimizer.min_nepochs,
-                         self.schedule_problem.min_nepochs))
+            epochs = range(self.nepochs)
 
         s1 = s0
         for epoch in epochs:
@@ -216,6 +221,11 @@ class MAPInversion:
             state = self.optimizer.minimize(problem, s1, monitor=monitor_progress)
             s1 = state['x']
         return s1
+
+    @property
+    def nepochs(self):
+        return max(self.schedule_optimizer.min_nepochs,
+                     self.schedule_problem.min_nepochs)
 
     def get_problem(self, d, epoch=0):
         """ Create a problem to be solved for the epoch """
