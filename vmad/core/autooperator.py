@@ -122,7 +122,12 @@ class AutoOperator(Operator):
 def _autograd(func, ain, aout):
 
     def main(__unused_argument_3333__, *args, **kwargs):
-        r = func(*args, **kwargs)
+        kwargs = kwargs.copy()
+        # merge the positional arguments
+        kwargs.update(dict(zip(ain, args)))
+
+        # always call with the kwargs syntax, such that
+        r = func(**kwargs)
         # normalize the output to a dict.
         if isinstance(r, tuple):
             r = dict(zip(aout, r))
@@ -186,7 +191,7 @@ def autooperator(*args):
             @autooperator
             def function(x : '*', y : '*', n) -> 'z':
                 ...
-                return dict(z = ....)
+                return z
 
         2. Explicitly provide the lis of input and output
            arguments.
@@ -196,7 +201,7 @@ def autooperator(*args):
             @autooperator('x', 'y', '->', 'z')
             def function(x, y, n):
                 ...
-                return dict(z = ....)
+                return z
 
         or 
 
@@ -205,7 +210,15 @@ def autooperator(*args):
             @autooperator('x, y->z')
             def function(x, y, n):
                 ...
-                return dict(z = ....)
+                return z
+
+        or
+        .. code ::
+
+            @autooperator('x, y->z')
+            def function(n, **kwargs):
+                ...
+                return z
 
         3. Use a class
          Create an operator with automated differentiation.
