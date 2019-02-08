@@ -253,7 +253,9 @@ def _build(obj, kwargs):
         for argname in obj.ain:
             model_args[argname] = m.input(argname)
         r = impl(m, **model_args)
-        if len(obj.aout) == 1 and not isinstance(r, dict):
+        if isinstance(r, tuple):
+            r = dict(zip(obj.aout, r))
+        elif len(obj.aout) == 1 and not isinstance(r, dict):
             argname = next(iter(obj.aout))
             r = {argname : r}
         # assert outputs are generated
