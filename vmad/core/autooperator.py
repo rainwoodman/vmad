@@ -122,7 +122,14 @@ class AutoOperator(Operator):
 def _autograd(func, ain, aout):
 
     def main(__unused_argument_3333__, *args, **kwargs):
-        return func(*args, **kwargs)
+        r = func(*args, **kwargs)
+        # normalize the output to a dict.
+        if isinstance(r, tuple):
+            r = dict(zip(aout, r))
+        elif not isinstance(r, dict) and len(aout) == 1:
+            r = dict(zip(aout, [r]))
+
+        return r
 
     argnames = func.__code__.co_varnames[:func.__code__.co_argcount]
     prototype = type(func.__name__, (),
@@ -253,11 +260,6 @@ def _build(obj, kwargs):
         for argname in obj.ain:
             model_args[argname] = m.input(argname)
         r = impl(m, **model_args)
-        if isinstance(r, tuple):
-            r = dict(zip(obj.aout, r))
-        elif len(obj.aout) == 1 and not isinstance(r, dict):
-            argname = next(iter(obj.aout))
-            r = {argname : r}
         # assert outputs are generated
         for argname in obj.aout:
             if argname not in r:
