@@ -39,6 +39,10 @@ class AutoOperator(Operator):
 
         def vjp(node, **kwargs):
             tape = kwargs['##tape']
+            if tape is None:
+                # run the apl operator to obtain the tape
+                y = _compute(self, kwargs)
+                tape = y['##tape']
 
             v =    [(a, kwargs[a]) for a in node.ain.keys() if a.startswith('_')]
 
