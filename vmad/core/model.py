@@ -86,7 +86,7 @@ class Model(list):
                     raise DuplicatedOutput("Variable %s is already marked as an output" % varname)
 
             var = Symbol(varname, model=self)
-            terminal(x=oldvar, y=var)
+            terminal.apl.create_node(dict(x=oldvar), dict(y=var))
             self._vout.append(var)
 
     def compile(self): pass

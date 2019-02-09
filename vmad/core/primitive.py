@@ -41,18 +41,7 @@ class Primitive:
     # and must be unpacked. A strange error (during resolving) is raised if not
     # unpacked.
 
-    def __call__(self, *args, **kwargs):
-        """ Creating a node and append it to the model's execution graph
-
-            This is the user interfacing API.
-
-            Internal code shall call create_node, which allows 'self' to be
-            a kwarg name.
-
-        """
-        return self.create_node(args, kwargs)
-
-    def create_node(self, args, kwargs):
+    def create_node(self, kwargs, kwout, stacklevel=-2):
         """ Creating a node and append it to the model's execution graph
 
             The model is inferred from the input arguments
@@ -62,8 +51,8 @@ class Primitive:
 
         """
         # remember the frame info
-        stacklevel = kwargs.pop('__stacklevel__', -2)
         previous_frame = inspect.currentframe()
+
         while stacklevel < 0:
             previous_frame = previous_frame.f_back
             stacklevel = stacklevel + 1
@@ -72,14 +61,12 @@ class Primitive:
 
         node = Node(self, _frameinfo)
 
-        kwargs = self._parse_args(args, kwargs)
-
         # gather models
-        models = self._walk_models(kwargs)
+        models = self._walk_models(kwargs, kwout)
         # consolidate
         model = Model.consolidate(models)
         # replace models mentioned in kwargs
-        self._walk_models(kwargs, reset=model)
+        self._walk_models(kwargs, kwout, reset=model)
 
         basename = model.unique_name(self.name)
 
@@ -93,13 +80,12 @@ class Primitive:
             node._varin[argname] = ref
 
         for argname in self.aout:
-            if not argname in kwargs:
+            if not argname in kwout:
                 # if a name is not supplied, generate a name
                 varname = basename + '-' + argname
                 var = Symbol(varname, model=model)
             else:
-                var = kwargs[argname]
-                var = assymbol(kwargs[argname])
+                var = assymbol(kwout[argname])
 
                 # already given a symbol, overwrite it
                 # but this doesn't work for gradients / tape
@@ -133,11 +119,12 @@ class Primitive:
             return vout
 
     def _parse_args(self, args, kwargs):
-        """ map arguments give as args and kwargs to argnames.
+        """ map arguments give as args and kwargs to argnames. Used in __call__
+
         """
 
         kwargs = kwargs.copy() # will modify
-
+        kwout = {}
         # first attempt to map args into kwargs
         if len(args) > len(self.argnames):
             raise BadArgument("Argument list longer than total number of args")
@@ -145,12 +132,19 @@ class Primitive:
         for argname, arg in zip(self.argnames, args):
             if argname in kwargs:
                 raise BadArgument("argument %s already provided as keyword" % argname)
-
             kwargs[argname] = arg
 
-        return kwargs
+        for argname in list(kwargs.keys()):
+            if argname in self.aout:
+                if argname not in self.ain:
+                    import warnings
+                    warnings.warn("Supplying keyword argument to an operator for an output. Prefer to use the verbose .create_node API instead of this", DeprecationWarning, stacklevel=3)
+                    kwout[argname] = kwargs.pop(argname)
 
-    def _walk_models(self, kwargs, reset=None):
+        return kwargs, kwout
+
+
+    def _walk_models(self, kwargs, kwout, reset=None):
         models = set()
 
         for argname in self.ain:
@@ -160,8 +154,9 @@ class Primitive:
             models = models.union(_infer_models(var, reset=reset))
 
         for argname in self.aout:
-            if argname not in kwargs: continue
-            var = kwargs[argname]
+            # will automatically generate kwout, and they will be properly anchored
+            if argname not in kwout: continue
+            var = kwout[argname]
 
             models = models.union(_infer_models(var, reset=reset))
 

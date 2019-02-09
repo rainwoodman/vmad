@@ -1,5 +1,5 @@
 from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List, IgnoredGradient
-from .stdlib import terminal, add
+from .stdlib import add
 
 class SymbolCollection(dict):
     """ A dictionary to look up collected symbols generated
@@ -116,7 +116,7 @@ def connect_output_vjp(ref, symbols):
         # because we intent to overwrite it.
         var_f2 = symbols.add_vjp(var)
 
-        add(x1=var_f, x2=var_p, y=var_f2)
+        add.apl.create_node(dict(x1=var_f, x2=var_p), dict(y=var_f2))
 
 def create_output_jvp(var, symbols):
     if isinstance(var, List):
@@ -161,7 +161,7 @@ def vjpmodel(tape):
         vjp_of_p = p.find_primitive_type(func='vjp')
 
         kwargs = prepare_opr_kwargs(record, model)
-
+        kwout = {}
         # initialize 'v'
         for argname, var in p.varout.items():
             kwargs['_' + argname] = create_input_vjp(var, symbols)
@@ -171,9 +171,9 @@ def vjpmodel(tape):
             var_p = create_output_vjp(ref, symbols)
 
             if var_p is not None:
-                kwargs['_' + argname] = var_p
+                kwout['_' + argname] = var_p
 
-        vjp_of_p.create_node(args=[], kwargs=kwargs)
+        vjp_of_p.create_node(kwargs=kwargs, kwout=kwout)
 
         # combine partial derivatives.
         for argname, ref in p.varin.items():
@@ -203,7 +203,7 @@ def jvpmodel(tape):
         jvp_of_p = p.find_primitive_type(func='jvp')
 
         kwargs = prepare_opr_kwargs(record, model)
-
+        kwout = {}
         # initialize 'v'
         for argname, ref in p.varin.items():
             jvp_var = create_input_jvp(ref.symbol, symbols)
@@ -212,9 +212,9 @@ def jvpmodel(tape):
         # create output symbols
         for argname, var in p.varout.items():
             jvp_var = create_output_jvp(var, symbols)
-            kwargs[argname + '_'] = jvp_var
+            kwout[argname + '_'] = jvp_var
 
-        jvp_of_p.create_node(args=[], kwargs=kwargs)
+        jvp_of_p.create_node(kwargs=kwargs, kwout=kwout)
 
     # mark outputs
     for var in tape.model._vout:

@@ -20,7 +20,9 @@ class Operator(object):
 
 
     def __call__(self, *args, **kwargs):
-        return self.apl.create_node(args, kwargs)
+        kwargs, kwout = self.apl._parse_args(args, kwargs)
+        stacklevel = kwargs.pop('__stacklevel__', -2)
+        return self.apl.create_node(kwargs, kwout, stacklevel=stacklevel)
 
     def __get__(self, instance, owner):
         if instance is not None:
