@@ -1,8 +1,10 @@
 from __future__ import print_function
 
 from vmad.core.model import Builder
+from vmad.core.error import BadArgument
 from vmad.core.autooperator import autooperator
 from vmad.lib.linalg import add
+import pytest
 
 @autooperator
 class example:
@@ -102,6 +104,21 @@ def test_model_nested():
     init = dict(a_ = 1.0)
     b_ = jvp.compute(init=init, vout='b_', monitor=print)
     assert b_ == 4.0
+
+def test_autooperator_additional_hyper():
+    @autooperator
+    def example_func(x :'*') -> 'y':
+        return x
+
+    assert 'x' in example_func.ain
+    assert 'y' in example_func.aout
+
+    @autooperator
+    def main1(x : '*', n) -> 'y':
+        return example_func(x, n=n)
+
+    with pytest.raises(BadArgument):
+        y = main1.build(n=2).compute(vout='y', init=dict(x=1))
 
 def test_model_nested_build():
 
