@@ -20,39 +20,43 @@ class AutoOperator(Operator):
 
     @property
     def apl(self):
+        return self.get_apl(tapename='$$tape$$', return_tape=False)
+
+    def get_apl(self, tapename, return_tape=True):
+        """ get an apl primitive, if tapename is not None, the primitive returns the tape as well. """
         def apl(node, **kwargs):
-            y = _compute(node.operator, kwargs)
+            y = _compute(node.operator, kwargs, tapename=tapename)
             return y
 
         def rcd(node, **kwargs):
             return kwargs
 
-        return _make_primitive(self, 'apl', apl, argnames=self.argnames, record_impl=rcd)
-
-    @property
-    def autotape_vjp(self):
-        return self._get_vjp(tapevar=None)
+        outnames = list(self.aout.keys())
+        if return_tape:
+            outnames.append(tapename)
+        return _make_primitive(self, 'apl', apl, argnames=self.argnames, outnames=outnames, record_impl=rcd)
 
     @property
     def vjp(self):
-        return self._get_vjp(tapevar='##tape')
+        # will take an extra argument $$tape$$
+        return self.get_vjp(tapename='$$tape$$')
 
-    def _get_vjp(self, tapevar):
+    def get_vjp(self, tapename):
         # add v arguments
         argnames_vjp = list(self.argnames)
-        if tapevar is not None:
-            argnames_vjp.append(tapevar)
+        if tapename is not None:
+            argnames_vjp.append(tapename)
 
         for argname in self.aout:
             argnames_vjp.append('_' + argname)
 
         def vjp(node, **kwargs):
-            if tapevar is not None:
-                tape = kwargs.pop(tapevar)
+            if tapename is not None:
+                tape = kwargs.pop(tapename)
             else:
                 # run the apl operator to obtain the tape
-                y = _compute(self, kwargs)
-                tape = y['##tape']
+                y = _compute(self, kwargs, '$$tape$$')
+                tape = y['$$tape$$']
 
             v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a.startswith('_')]
 
@@ -66,13 +70,13 @@ class AutoOperator(Operator):
     @property
     def jvp(self):
         argnames_jvp = list(self.argnames)
-        argnames_jvp.append('##tape')
+        argnames_jvp.append('$$tape$$')
 
         for argname in self.ain:
             argnames_jvp.append(argname + '_')
 
         def jvp(node, **kwargs):
-            tape = kwargs['##tape']
+            tape = kwargs['$$tape$$']
 
             v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a .endswith('_')]
 
@@ -99,9 +103,9 @@ class AutoOperator(Operator):
 
             Instantiating the returned operator will be an exact replay of the tape, regardless of the parameters
         """
-        y = _compute(obj, kwargs)
+        y = _compute(obj, kwargs, '$$tape$$')
         m = _build(obj, kwargs)
-        tape = y['##tape']
+        tape = y['$$tape$$']
 
         # create a new operator, because we need new primitives that points to this operator.
         obj = AutoOperator(obj.prototype, argnames=obj.argnames)
@@ -294,7 +298,7 @@ def _build(obj, kwargs):
         m.output(**r)
     return m
 
-def _compute(obj, kwargs):
+def _compute(obj, kwargs, tapename):
     if hasattr(obj, '__bound_tape__'):
         tape = obj.__bound_tape__
         y = {}
@@ -304,8 +308,14 @@ def _compute(obj, kwargs):
         init = [(a, kwargs[a]) for a in obj.ain.keys()]
 
         vout = list(obj.aout.keys())
-        y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
-    y['##tape'] = tape
+        if tapename is not None:
+            y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
+        else:
+            y = m.compute(vout, init=init, return_dict=True, return_tape=False)
+
+    if tapename is not None:
+        y[tapename] = tape
+
     return y
 
 
