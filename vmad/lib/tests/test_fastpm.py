@@ -172,7 +172,7 @@ class Test_readout_x(BaseScalarTest):
     epsilon = 1e-3
 
     def model(self, x):
-        y = fastpm.readout(self.mesh, x, layout=None, pm=self.pm)
+        y = fastpm.readout(self.mesh, x, layout=None)
         return y
 
 class Test_readout_mesh(BaseScalarTest):
@@ -189,7 +189,7 @@ class Test_readout_mesh(BaseScalarTest):
     epsilon = 1e-3
 
     def model(self, x):
-        y = fastpm.readout(x, self.pos, layout=None, pm=self.pm)
+        y = fastpm.readout(x, self.pos, layout=None)
         return y
 
 class Test_lpt1(BaseScalarTest):
