@@ -1,4 +1,5 @@
 import inspect
+from collections import OrderedDict
 
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .node import Node
@@ -113,10 +114,8 @@ class Primitive:
 
         # return the output symbols
         vout = [node.varout[argname] for argname in self.aout]
-        if len(self.aout) == 1:
-            return vout[0]
-        else:
-            return vout
+
+        return OrderedDict([(argname, node.varout[argname]) for argname in self.aout])
 
     def _parse_args(self, args, kwargs):
         """ map arguments give as args and kwargs to argnames. Used in __call__

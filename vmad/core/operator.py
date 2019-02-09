@@ -22,7 +22,12 @@ class Operator(object):
     def __call__(self, *args, **kwargs):
         stacklevel = kwargs.pop('__stacklevel__', -2)
         kwargs, kwout = self.apl._parse_args(args, kwargs)
-        return self.apl.create_node(kwargs, kwout, stacklevel=stacklevel)
+        vout = self.apl.create_node(kwargs, kwout, stacklevel=stacklevel)
+
+        if len(self.aout) == 1:
+            return next(iter(vout.values()))
+        else:
+            return list(vout.values())
 
     def __get__(self, instance, owner):
         if instance is not None:
