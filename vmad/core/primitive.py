@@ -141,7 +141,7 @@ class Primitive:
                     warnings.warn("Supplying keyword argument to an operator for an output. Prefer to use the verbose .create_node API instead of this", DeprecationWarning, stacklevel=3)
                     kwout[argname] = kwargs.pop(argname)
 
-            if argname not in self.argnames:
+            elif argname not in self.argnames:
                 raise BadArgument("Argument %s is passed in , but not declared as an argument" % argname)
 
         return kwargs, kwout
