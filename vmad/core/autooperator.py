@@ -30,16 +30,26 @@ class AutoOperator(Operator):
         return _make_primitive(self, 'apl', apl, argnames=self.argnames, record_impl=rcd)
 
     @property
+    def autotape_vjp(self):
+        return self._get_vjp(tapevar=None)
+
+    @property
     def vjp(self):
+        return self._get_vjp(tapevar='##tape')
+
+    def _get_vjp(self, tapevar):
         # add v arguments
         argnames_vjp = list(self.argnames)
-        argnames_vjp.append('##tape')
+        if tapevar is not None:
+            argnames_vjp.append(tapevar)
+
         for argname in self.aout:
             argnames_vjp.append('_' + argname)
 
         def vjp(node, **kwargs):
-            tape = kwargs['##tape']
-            if tape is None:
+            if tapevar is not None:
+                tape = kwargs.pop(tapevar)
+            else:
                 # run the apl operator to obtain the tape
                 y = _compute(self, kwargs)
                 tape = y['##tape']
