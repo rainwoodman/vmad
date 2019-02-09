@@ -311,7 +311,7 @@ def assymbol(obj):
 
     """
     # cast list or tuple to a list object:
-    if isinstance(obj, (list, tuple)):
+    if type(obj) in (list, tuple):
         obj = List([assymbol(i) for i in obj])
 
     # not a Symbol? Must be some raw python object

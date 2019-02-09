@@ -20,9 +20,6 @@ class Node:
         self._varin = {} # references
         self._varout = {}
 
-        # FIXME: why is this useful at all?
-        self.hyper_args = {}
-
     def __getitem__(self, key):
         """ getting input variables as symbols """
         # varin are references.

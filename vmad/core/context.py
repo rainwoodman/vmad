@@ -99,10 +99,6 @@ class Context(dict):
         kwargs = {}
         kwargs.update(resolved)
 
-        # add the hyper arguments used by the impl
-        for argname, value in node.hyper_args.items():
-            kwargs[argname] = value
-
         if _raise_internal_errors:
             r = node.call(kwargs)
         else:

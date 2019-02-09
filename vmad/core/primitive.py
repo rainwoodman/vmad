@@ -4,7 +4,7 @@ from collections import OrderedDict
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .node import Node
 
-from .symbol import Symbol, assymbol, BaseSymbol
+from .symbol import Symbol, assymbol, BaseSymbol, Literal
 from .model import Model
 
 class Primitive:
@@ -76,8 +76,17 @@ class Primitive:
 
         basename = model.unique_name(self.name)
 
-        for argname in self.ain:
-            var = assymbol(kwargs[argname])
+        for argname in self.argnames:
+            if argname in self.ain:
+                var = assymbol(kwargs[argname])
+            else:
+                # if it is not provided (e.g. default value defined in the prototype is used)
+                if argname not in kwargs:
+                    continue
+                # not a autodiff argument, must be a Literal
+                # but we still allow passing in a symbol
+                # just ignore its gradient propagation.
+                var = assymbol(kwargs[argname])
 
             # checking symbol references
             #print(basename, var.name, id(var), id(model.get(var.name)))
@@ -99,20 +108,6 @@ class Primitive:
                 _check_var_references(var)
 
             node._varout[argname] = var
-
-        # record all `hyper` arguments that do not go into derivatives.
-        for argname in self.argnames:
-            if argname in self.ain or argname in self.aout: continue
-            # if it is not provided (e.g. default value defined in the prototype is used)
-            if argname not in kwargs: continue
-
-            v = kwargs[argname]
-            if isinstance(v, BaseSymbol):
-                raise BadArgument("argument %s is declared as a hyper argument, but a symbol '%s' is passed in."
-                    % (argname, v))
-
-            node.hyper_args[argname] = v
-
 
         # append node to the model.
         model.append(node)
