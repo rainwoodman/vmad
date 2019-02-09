@@ -132,9 +132,6 @@ class Primitive:
 
         """
 
-        kwargs1 = self._default_kwargs.copy() # will modify
-        kwargs1.update(kwargs)
-        kwargs = kwargs1
         kwout = {}
         # first attempt to map args into kwargs
         if len(args) > len(self.argnames):
@@ -144,6 +141,10 @@ class Primitive:
             if argname in kwargs:
                 raise BadArgument("argument %s already provided as keyword" % argname)
             kwargs[argname] = arg
+
+        for argname, arg in self._default_kwargs.items():
+            if argname not in kwargs:
+                kwargs[argname] = arg
 
         for argname in list(kwargs.keys()):
             if argname in self.outnames:
