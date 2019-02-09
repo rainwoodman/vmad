@@ -9,6 +9,8 @@
     you only need to define a model and the ain, aout
 
 """
+from collections import OrderedDict
+
 class EmptyPrimitive:
     argnames = []
 
@@ -92,7 +94,6 @@ class InstanceOperator(Operator):
         return getattr(self.base, attrname)
 
 def _to_ordereddict(ain):
-    from collections import OrderedDict
 
     # convert ain to an ordered dict,
     # supported syntax:
@@ -224,8 +225,8 @@ def operator(kls):
 def zerobypass(impl):
     def zerobypassimpl(__node__, **kwargs):
         self = __node__
-        ain = self.ain
-        aout = self.aout
+        ain = self.primitive.ain
+        aout = self.primitive.aout
         if all(kwargs[argname] is 0 for argname in ain):
             d = {}
             for argname in aout:
@@ -235,7 +236,7 @@ def zerobypass(impl):
     zerobypassimpl.original = impl
     return zerobypassimpl
 
-def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all):
+def _make_primitive(opr, func, impl, argnames=None, outnames=None, record_impl=record_copy_all):
     """ create primitives for the operator.
 
         This is used to define a primitive based on the unbound method
@@ -246,8 +247,8 @@ def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all)
 
     assert func in ('apl', 'vjp', 'jvp')
 
-    aout = {}
-    ain = {}
+    aout = OrderedDict()
+    ain = OrderedDict()
     if argnames is None:
         argnames = impl.__code__.co_varnames[1:impl.__code__.co_argcount]
 
@@ -274,7 +275,10 @@ def _make_primitive(opr, func, impl, argnames=None, record_impl=record_copy_all)
             aout[arg + '_'] = opr.aout[arg]
         impl = zerobypass(impl)
 
-    primitive = Primitive(func, opr, ain, aout, argnames, impl, record_impl)
+    if outnames is None:
+        outnames = list(aout.keys())
+
+    primitive = Primitive(func, opr, ain, aout, argnames, outnames, impl, record_impl)
 
     return primitive
 

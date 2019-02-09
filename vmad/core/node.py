@@ -14,8 +14,6 @@ class Node:
         # add a few aliases for accessing primitive attributes
         # 
         self.name = primitive.name
-        self.ain = primitive.ain
-        self.aout = primitive.aout
 
         self._varin = {} # references
         self._varout = {}

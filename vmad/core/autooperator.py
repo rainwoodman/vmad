@@ -54,7 +54,7 @@ class AutoOperator(Operator):
                 y = _compute(self, kwargs)
                 tape = y['##tape']
 
-            v =    [(a, kwargs[a]) for a in node.ain.keys() if a.startswith('_')]
+            v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a.startswith('_')]
 
             vjp = tape.get_vjp()
             vjpvout = tape.get_vjp_vout()
@@ -74,7 +74,7 @@ class AutoOperator(Operator):
         def jvp(node, **kwargs):
             tape = kwargs['##tape']
 
-            v =    [(a, kwargs[a]) for a in node.ain.keys() if a .endswith('_')]
+            v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a .endswith('_')]
 
             jvp = tape.get_jvp()
             jvpvout = tape.get_jvp_vout()

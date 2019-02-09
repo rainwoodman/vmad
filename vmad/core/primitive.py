@@ -7,6 +7,14 @@ from .node import Node
 from .symbol import Symbol, assymbol, BaseSymbol, Literal
 from .model import Model
 
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
 class Primitive:
     """ Primitives are building blocks of models.
 
@@ -17,15 +25,17 @@ class Primitive:
 
     """
 
-    def __init__(self, func, opr, ain, aout, argnames, impl, record_impl):
+    def __init__(self, func, opr, ain, aout, argnames, outnames, impl, record_impl):
         self.name = opr.prototype.__name__ + '-' + func
         self.func = func
         self.operator = opr
         self.ain = ain
         self.aout = aout
         self.argnames = argnames
+        self.outnames = outnames
 
         self.impl = impl
+        self._default_kwargs = get_default_args(self.impl)
         self.record_impl = record_impl
 
         # a few others are created in make_primitive
@@ -94,7 +104,7 @@ class Primitive:
             ref = var._add_reference(node)
             node._varin[argname] = ref
 
-        for argname in self.aout:
+        for argname in self.outnames:
             if not argname in kwout:
                 # if a name is not supplied, generate a name
                 varname = basename + '-' + argname
@@ -113,16 +123,18 @@ class Primitive:
         model.append(node)
 
         # return the output symbols
-        vout = [node.varout[argname] for argname in self.aout]
+        vout = [node.varout[argname] for argname in self.outnames]
 
-        return OrderedDict([(argname, node.varout[argname]) for argname in self.aout])
+        return OrderedDict([(argname, node.varout[argname]) for argname in self.outnames])
 
     def _parse_args(self, args, kwargs):
         """ map arguments give as args and kwargs to argnames. Used in __call__
 
         """
 
-        kwargs = kwargs.copy() # will modify
+        kwargs1 = self._default_kwargs.copy() # will modify
+        kwargs1.update(kwargs)
+        kwargs = kwargs1
         kwout = {}
         # first attempt to map args into kwargs
         if len(args) > len(self.argnames):
@@ -134,8 +146,8 @@ class Primitive:
             kwargs[argname] = arg
 
         for argname in list(kwargs.keys()):
-            if argname in self.aout:
-                if argname not in self.ain:
+            if argname in self.outnames:
+                if argname not in self.argnames:
                     import warnings
                     warnings.warn("Supplying keyword argument to an operator for an output. Prefer to use the verbose .create_node API instead of this", DeprecationWarning, stacklevel=3)
                     kwout[argname] = kwargs.pop(argname)
@@ -143,19 +155,21 @@ class Primitive:
             elif argname not in self.argnames:
                 raise BadArgument("Argument %s is passed in , but not declared as an argument" % argname)
 
+        for argname in self.argnames:
+            if argname not in kwargs:
+                raise MissingArgument("Argument %s is missing." % argname)
+
         return kwargs, kwout
 
 
     def _walk_models(self, kwargs, kwout, reset=None):
         models = set()
 
-        for argname in self.ain:
-            if not argname in kwargs: raise MissingArgument("input argument '%s' not provided" % argname)
-
+        for argname in self.argnames:
             var = kwargs[argname]
             models = models.union(_infer_models(var, reset=reset))
 
-        for argname in self.aout:
+        for argname in self.outnames:
             # will automatically generate kwout, and they will be properly anchored
             if argname not in kwout: continue
             var = kwout[argname]
