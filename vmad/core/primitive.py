@@ -42,15 +42,20 @@ class Primitive:
     # and must be unpacked. A strange error (during resolving) is raised if not
     # unpacked.
 
-    def create_node(self, kwargs, kwout, stacklevel=-2):
+    def create_node(self, kwargs, kwout=None, stacklevel=-2):
         """ Creating a node and append it to the model's execution graph
 
             The model is inferred from the input arguments
 
-            kwargs['__stacklevel__'] is the adjustment for stacklevel
+            stacklevel is the adjustment for stacklevel
             -1 is the caller. -2 is the caller of the caller
 
+            kwargs are the input arguments; values are symbols.
+            kwout are the output arguments, if an output argument is not
+            given, a new symbol will be created.
         """
+        if kwout is None: # generate output arguments.
+            kwout = {}
         # remember the frame info
         previous_frame = inspect.currentframe()
 
