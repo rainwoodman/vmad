@@ -134,22 +134,22 @@ class take:
     def apl(node, x, i, axis):
         if axis is None:
             raise AssertionError('Assertion error. axis keyword in linalg.take cannot be None.')
-        return dict(y=numpy.take(x, i, axis=axis))
+        i = numpy.array(i, dtype='intp')
+        y = numpy.take(x, i, axis=axis)
+        yshape = numpy.shape(y)
+        xshape = numpy.shape(x)
+        return dict(y=y, yshape=yshape, xshape=xshape, i=i, axis=axis)
 
-    def rcd(node, x, i, axis, y):
-        return dict(xshape = numpy.shape(x), i=numpy.array(i, dtype='i8'), axis=axis)
-
-    def vjp(node, _y, i, axis, xshape):
+    def vjp(node, _y, i, axis, xshape, yshape):
+        # shape of y is x.shape [..., i
         _x = numpy.zeros(xshape)
-        _x = numpy.swapaxes(_x, 0, axis)
+        _y = numpy.broadcast_to(_y, yshape)
 
-        # the vectorization in ufunc.at differ from what we expect
-        # so flatten the shape of _y to call at reduction
-        _y_newshape = [-1] + list(_y.shape[len(i.shape):])
+        indices = [slice(None)] * len(xshape)
+        indices[axis] = i
 
         # one element can show up several times, add all gradients.
-        numpy.add.at(_x, i.flat, _y.reshape(_y_newshape))
-        _x = numpy.swapaxes(_x, 0, axis)
+        numpy.add.at(_x, tuple(indices), _y)
         return dict(_x=_x)
 
 @operator
