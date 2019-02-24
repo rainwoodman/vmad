@@ -277,3 +277,24 @@ class Test_fastpm(BaseScalarTest):
         dx, p, f = sim.run(fastpm.r2c(x))
         return linalg.stack([dx, p, f], axis=-1)
 
+
+def test_add_scalar():
+    from vmad import autooperator
+    from vmad.core.stdlib import eval
+    from numpy.testing import assert_array_equal
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=8.0, comm=MPI.COMM_SELF)
+
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
+    x[...] = 1.0
+
+    @autooperator('x, n->y')
+    def func(x, n):
+        a = linalg.take(n, 0, axis=0)
+        a = linalg.broadcast_to(a, eval(x, lambda x : x.shape))
+        return x + a
+
+    n = numpy.array([3, 4])
+    (y, ), (_x, _n) = (func.build().compute_with_vjp(init=dict(x=x, n=n), v=dict(_y=x)))
+    assert_array_equal(y, 4)
+    assert_array_equal(_x, 1)
+    assert_array_equal(_n, (64, 0))
