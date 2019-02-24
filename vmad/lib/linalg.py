@@ -11,6 +11,30 @@ from vmad.lib.unary import *
 
 from numpy.core.einsumfunc import _parse_einsum_input
 
+@operator
+class broadcast_to:
+    ain = 'x'
+    aout = 'y'
+    def apl(node, x, shape):
+        return dict(y=numpy.broadcast_to(x, shape), xshape=numpy.shape(x), yshape=shape)
+
+    def vjp(node, _y, xshape, yshape):
+        _x = numpy.broadcast_to(_y, yshape)
+
+        # remove all newly added axes
+        if len(yshape) != len(xshape):
+            newaxis = tuple(range(0, len(yshape) - len(xshape)))
+            _x = numpy.sum(_x, axis=newaxis)
+
+            yshape = yshape[len(yshape) - len(xshape):]
+
+        for axis, size in enumerate(xshape):
+            if size == 1: # broadcasted axis
+                _x = numpy.sum(_x, axis=axis, keepdims=True)
+
+        return dict(_x=_x)
+
+
 def _join_einsum_sub(sub_op, sub_y):
     return ','.join(sub_op) + '->' + sub_y
 

@@ -192,6 +192,13 @@ class Test_sumat(BaseVectorTest):
     def model(self, x):
         return linalg.sumat(x, at=self.at, axis=0)
 
+class Test_broadcast(BaseVectorTest):
+    x = numpy.arange(10).reshape(5, 1, 2)
+    shape = [3, 5, 2, 2]
+    y = numpy.broadcast_to(x, shape)
+
+    def model(self, x):
+        return linalg.broadcast_to(x, self.shape)
 
 def test_take_chained():
     from vmad import autooperator
