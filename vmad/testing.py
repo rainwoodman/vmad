@@ -96,6 +96,7 @@ class BaseVectorTest:
     epsilon = 1e-7
 
     def allclose(self, x, y):  # measuring the 
+        assert numpy.shape(x) == numpy.shape(y)
         return numpy.allclose(x, y)
 
     def inner(self, a, b):
@@ -150,7 +151,7 @@ class BaseVectorTest:
 
         self.finite_jvp = self._make_finite_jacobian()
 
-        if self.allclose(self.finite_jvp, 0):
+        if numpy.allclose(self.finite_jvp, 0):
             raise AssertionError("The test case is not powerful enough, since all derivatives at this point are zeros")
 
         y, tape = self.m.compute(init=dict(x=self.x), vout='y', return_tape=True)
