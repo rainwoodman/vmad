@@ -153,16 +153,16 @@ from vmad.core.stdlib import watchpoint
 class Test_take_vector(BaseVectorTest):
 
     x = numpy.arange(10)
-    y = numpy.array(2)
+    y = numpy.array(4)
     def model(self, x):
         a = linalg.take(x, [[2, 2], [2, 2]], axis=0)
         b = linalg.take(a, 0, axis=0)
         c = linalg.take(b, 0, axis=0)
         #d = linalg.take(b, 0, axis=0)
-    #    watchpoint(b, lambda b:print('b=', b))
-    #    watchpoint(c, lambda c:print('c=', c))
+        #watchpoint(b, lambda b:print('b=', b))
+        #watchpoint(c, lambda c:print('c=', c))
     #    watchpoint(d, lambda d:print('d=', d))
-        return c
+        return c + c
 
 class Test_concatenate(BaseVectorTest):
 
@@ -192,3 +192,25 @@ class Test_sumat(BaseVectorTest):
     def model(self, x):
         return linalg.sumat(x, at=self.at, axis=0)
 
+class Test_broadcast(BaseVectorTest):
+    x = numpy.arange(10).reshape(5, 1, 2)
+    shape = [3, 5, 2, 2]
+    y = numpy.broadcast_to(x, shape)
+
+    def model(self, x):
+        return linalg.broadcast_to(x, self.shape)
+
+def test_take_chained():
+    from vmad import autooperator
+    from numpy.testing import assert_array_equal
+
+    @autooperator('x->y')
+    def func(x):
+        b = 0
+        for i in range(3):
+            b = b + linalg.take(x, i, axis=0)
+        return b
+
+    (y,), (_x, ) = (func.build().compute_with_vjp(init=dict(x=numpy.array([3, 4, 5])), v=dict(_y=1.0)))
+    assert y == 12
+    assert_array_equal(_x, (1, 1, 1))

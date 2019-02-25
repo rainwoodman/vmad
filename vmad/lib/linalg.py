@@ -11,6 +11,30 @@ from vmad.lib.unary import *
 
 from numpy.core.einsumfunc import _parse_einsum_input
 
+@operator
+class broadcast_to:
+    ain = 'x'
+    aout = 'y'
+    def apl(node, x, shape):
+        return dict(y=numpy.broadcast_to(x, shape), xshape=numpy.shape(x), yshape=shape)
+
+    def vjp(node, _y, xshape, yshape):
+        _x = numpy.broadcast_to(_y, yshape)
+
+        # remove all newly added axes
+        if len(yshape) != len(xshape):
+            newaxis = tuple(range(0, len(yshape) - len(xshape)))
+            _x = numpy.sum(_x, axis=newaxis)
+
+            yshape = yshape[len(yshape) - len(xshape):]
+
+        for axis, size in enumerate(xshape):
+            if size == 1: # broadcasted axis
+                _x = numpy.sum(_x, axis=axis, keepdims=True)
+
+        return dict(_x=_x)
+
+
 def _join_einsum_sub(sub_op, sub_y):
     return ','.join(sub_op) + '->' + sub_y
 
@@ -134,22 +158,22 @@ class take:
     def apl(node, x, i, axis):
         if axis is None:
             raise AssertionError('Assertion error. axis keyword in linalg.take cannot be None.')
-        return dict(y=numpy.take(x, i, axis=axis))
+        i = numpy.array(i, dtype='intp')
+        y = numpy.take(x, i, axis=axis)
+        yshape = numpy.shape(y)
+        xshape = numpy.shape(x)
+        return dict(y=y, yshape=yshape, xshape=xshape, i=i, axis=axis)
 
-    def rcd(node, x, i, axis, y):
-        return dict(xshape = numpy.shape(x), i=numpy.array(i, dtype='i8'), axis=axis)
-
-    def vjp(node, _y, i, axis, xshape):
+    def vjp(node, _y, i, axis, xshape, yshape):
+        # shape of y is x.shape [..., i
         _x = numpy.zeros(xshape)
-        _x = numpy.swapaxes(_x, 0, axis)
+        _y = numpy.broadcast_to(_y, yshape)
 
-        # the vectorization in ufunc.at differ from what we expect
-        # so flatten the shape of _y to call at reduction
-        _y_newshape = [-1] + list(_y.shape[len(i.shape):])
+        indices = [slice(None)] * len(xshape)
+        indices[axis] = i
 
         # one element can show up several times, add all gradients.
-        numpy.add.at(_x, i.flat, _y.reshape(_y_newshape))
-        _x = numpy.swapaxes(_x, 0, axis)
+        numpy.add.at(_x, tuple(indices), _y)
         return dict(_x=_x)
 
 @operator
