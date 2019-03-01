@@ -4,7 +4,7 @@ import numpy
 
 # a few commonly used operators are expected to be
 # compatible with the python ones.
-from vmad.core.stdlib import mul, add, abs, pow
+from vmad.core.stdlib import mul, add, abs, pow, div, mod
 
 # import all functions defined in unary module
 from vmad.lib.unary import *

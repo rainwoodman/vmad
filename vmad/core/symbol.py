@@ -55,6 +55,8 @@ class BaseSymbol(object):
     def __rsub__(self, other): return stdlib.sub(other, self, __stacklevel__=-3)
     def __mul__(self, other): return stdlib.mul(self, other, __stacklevel__=-3)
     def __rmul__(self, other): return stdlib.mul(other, self, __stacklevel__=-3)
+    def __mod__(self, other): return stdlib.mod(self, other, __stacklevel__=-3)
+    def __rmod__(self, other): return stdlib.mod(other, self, __stacklevel__=-3)
     def __truediv__(self, other): return stdlib.div(self, other, __stacklevel__=-3)
     def __rtruediv__(self, other): return stdlib.div(other, self, __stacklevel__=-3)
     def __pow__(self, other, modulo=None):

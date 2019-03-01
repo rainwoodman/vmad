@@ -89,6 +89,22 @@ class Test_mul3(BaseVectorTest):
     def model(self, x):
         return linalg.mul(1, x)
 
+class Test_div2(BaseVectorTest):
+    x = numpy.arange(1, 10)
+    y = x
+
+    def model(self, x):
+        y1 = linalg.pow(x, 1.7)
+        y2 = linalg.pow(x, 0.7)
+        return linalg.div(y1, y2)
+
+class Test_mod(BaseVectorTest):
+    x = numpy.arange(1, 4) * 2 - 3
+    y = x % (x * 0.1 + 1.0)
+
+    def model(self, x):
+        return linalg.mod(x, x * 0.1 + 1.0)
+
 class Test_sum(BaseVectorTest):
     x = numpy.arange(10)
     y = x.reshape(5, 2).sum(axis=0)

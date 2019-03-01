@@ -17,5 +17,5 @@ class terminal:
 from .utils import eval, watchpoint
 from .utils import assert_isinstance, assert_true
 
-from .operators import pos, neg, add, sub, mul, div, pow, abs
+from .operators import pos, neg, add, sub, mul, div, pow, abs, mod
 
