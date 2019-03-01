@@ -122,21 +122,6 @@ class mod(binary):
     def jvp(node, x1_, x2_, x1, x2, n):
         return dict(y_ = x1_ - n * x2_)
 
-# only supports unary pow -- now gradient against n yet.
-@operator
-class pow(unary):
-    def apl(node, x, n):
-        return dict(y=x ** n)
-
-    def vjp(node, _y, x, n):
-        fac = x ** (n - 1) if n != 1 else 1
-        return dict(_x = n * _y * fac)
-
-    def jvp(node, x_, x, n):
-        fac = x ** (n - 1) if n != 1 else 1
-        return dict(y_ = n * x_ * fac)
-
-
 @operator
 class pow(binary):
     def apl(node, x1, x2):
