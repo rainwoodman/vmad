@@ -104,3 +104,6 @@ class Node:
         if func == 'vjp': return node.operator.vjp
         if func == 'apl': return node.operator.apl
 
+    def is_literal(self, argname):
+        from vmad.core.symbol import Literal
+        return isinstance(self.varin[argname].symbol, Literal)

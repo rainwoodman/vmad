@@ -72,11 +72,10 @@ class mul(binary):
         return dict(y = x1 * x2)
 
     def rcd(node, x1, x2, y):
-        from vmad.core.symbol import Literal
         # the other value is not needed, 0 should work.
-        if isinstance(node['x1'], Literal):
+        if node.is_literal('x1'):
             x2 = 0
-        if isinstance(node['x2'], Literal):
+        if node.is_literal('x2'):
             x1 = 0
         return dict(x1=x1, x2=x2)
 
@@ -96,11 +95,11 @@ class div(binary):
     def rcd(node, x1, x2inv, y, x2):
         from vmad.core.symbol import Literal
         # the other value is not needed, 0 should work.
-        if isinstance(node.varin['x1'].symbol, Literal):
+        if node.is_literal('x1'):
             x2inv = 0
         else:
             x2inv = 1 / x2
-        if isinstance(node.varin['x2'].symbol, Literal):
+        if node.is_literal('x2'):
             x1 = 0
         return dict(x1=x1, x2inv=x2inv)
 
@@ -136,3 +135,27 @@ class pow(unary):
     def jvp(node, x_, x, n):
         fac = x ** (n - 1) if n != 1 else 1
         return dict(y_ = n * x_ * fac)
+
+
+@operator
+class pow(binary):
+    def apl(node, x1, x2):
+        if not node.is_literal('x2'):
+            from numpy import log
+            logx1 = log(x1)
+        else:
+            # no need for logx2, as _x2 will be zeros.
+            logx1 = 0
+
+        return dict(y=x1 ** x2, logx1=logx1)
+
+    def vjp(node, _y, x1, x2, logx1):
+        fac = x1 ** (x2 - 1) if x2 != 1 else 1
+        return dict(_x1 = x2 * _y * fac,
+                    _x2 = _y * x1**x2 * logx1)
+
+    def jvp(node, x1_, x2_, x1, x2, logx1):
+        fac = x1 ** (x2 - 1) if x2 != 1 else 1
+        return dict(y_ = x2 * x1_ * fac + x2_ * x1**x2 * logx1)
+
+
