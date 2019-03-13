@@ -14,8 +14,8 @@ class BaseScalarTest:
     y = sum(x ** 2)       # expected output variable y, scalar
                           # NotImplemented to bypass the value comparison
     epsilon = 1e-3
-    rtol = 1e-7
-    atol = 1e-12
+    rtol = 1e-6
+    atol = 1e-10
     def inner(self, x, y):
         return numpy.sum(x * y)
 
@@ -96,8 +96,8 @@ class BaseVectorTest:
 
     epsilon = 1e-7
 
-    rtol = 1e-7
-    atol = 1e-12
+    rtol = 1e-6
+    atol = 1e-10
     def allclose(self, x, y):  # measuring the 
         assert numpy.shape(x) == numpy.shape(y)
         return numpy.allclose(x, y, rtol=self.rtol, atol=self.atol)
