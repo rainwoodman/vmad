@@ -220,7 +220,7 @@ class Test_lpt2src(BaseScalarTest):
     x_ = create_bases(x)
 
     epsilon = 1e-4
-
+    rtol = 1e-6
     def model(self, x):
         return fastpm.lpt2src(fastpm.r2c(x), pm=self.pm)
 
