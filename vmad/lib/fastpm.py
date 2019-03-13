@@ -178,11 +178,22 @@ class exchange:
     def jvp(engine, layout, layout_, x_,):
         return dict(y_=layout.exchange(x_))
 
-def fourier_space_neg_gradient(dir, pm):
-    nyquist =  numpy.pi / pm.BoxSize[dir] * (pm.Nmesh[dir] - 0.01)
-    def filter(k):
-        mask = abs(k[dir]) < nyquist
-        return - 1j * k[dir] * mask
+def fourier_space_neg_gradient(dir, pm, order):
+    if order == 0:
+        nyquist =  numpy.pi / pm.BoxSize[dir] * (pm.Nmesh[dir] - 0.01)
+        def filter(k):
+            mask = abs(k[dir]) < nyquist
+            return - 1j * k[dir] * mask
+    elif order == 1:
+        def filter(k):
+            cellsize = (pm.BoxSize[dir] / pm.Nmesh[dir])
+            w = k[dir] * cellsize
+
+            a = 1 / (6.0 * cellsize) * (8 * numpy.sin(w) - numpy.sin(2 * w))
+            # a is already zero at the nyquist to ensure field is real
+            return (-1j * a)
+    else:
+        raise ValueError("only order 1 and 2 are supproted")
     return filter
 
 def fourier_space_laplace(k):
@@ -201,7 +212,7 @@ def lpt1(rhok, q, pm):
 
     r1 = []
     for d in range(pm.ndim):
-        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm, order=1))
         dx1_r = c2r(dx1_c)
         dx1 = readout(dx1_r, q, layout)
         r1.append(dx1)
@@ -222,8 +233,8 @@ def lpt2src(rhok, pm):
 
     Pii = []
     for d in range(pm.ndim):
-        t = apply_transfer(potk, fourier_space_neg_gradient(d, pm))
-        Pii1 = apply_transfer(t, fourier_space_neg_gradient(d, pm))
+        t = apply_transfer(potk, fourier_space_neg_gradient(d, pm, order=1))
+        Pii1 = apply_transfer(t, fourier_space_neg_gradient(d, pm, order=1))
         Pii1 = c2r(Pii1)
         Pii.append(Pii1)
 
@@ -236,8 +247,8 @@ def lpt2src(rhok, pm):
             source = source + source1
 
     for d in range(pm.ndim):
-        t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm))
-        Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm))
+        t = apply_transfer(potk, fourier_space_neg_gradient(D1[d], pm, order=1))
+        Pij1 = apply_transfer(t, fourier_space_neg_gradient(D2[d], pm, order=1))
         Pij1 = c2r(Pij1)
         source1 = - Pij1 * Pij1
         source = source + source1
@@ -289,7 +300,7 @@ def gravity(dx, q, pm):
 
     r1 = []
     for d in range(pm.ndim):
-        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+        dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm, order=1))
         dx1_r = c2r(dx1_c)
         dx1l = readout(dx1_r, xl, None)
         dx1 = gather(dx1l, layout)
@@ -461,7 +472,7 @@ class FastPMSimulation:
 
         r1 = []
         for d in range(pm.ndim):
-            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm))
+            dx1_c = apply_transfer(p, fourier_space_neg_gradient(d, pm, order=1))
             dx1_r = c2r(dx1_c)
             dx1l = readout(dx1_r, xl, None)
             dx1 = gather(dx1l, layout)
