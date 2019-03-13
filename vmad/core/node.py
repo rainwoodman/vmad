@@ -9,6 +9,7 @@ class Node:
     def __init__(self, primitive, _frameinfo):
         self.primitive = primitive
         self.operator = primitive.operator
+        self.prototype = primitive.operator.prototype
         self._frameinfo = _frameinfo
 
         # add a few aliases for accessing primitive attributes
