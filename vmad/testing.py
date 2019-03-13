@@ -14,7 +14,8 @@ class BaseScalarTest:
     y = sum(x ** 2)       # expected output variable y, scalar
                           # NotImplemented to bypass the value comparison
     epsilon = 1e-3
-
+    rtol = 1e-7
+    atol = 1e-12
     def inner(self, x, y):
         return numpy.sum(x * y)
 
@@ -55,7 +56,7 @@ class BaseScalarTest:
 
         if self.y is not NotImplemented:
             # correctness
-            assert_allclose(y1, self.y)
+            assert_allclose(y1, self.y, rtol=self.rtol, atol=self.atol)
 
     def test_powerfulness(self):
         import numpy
@@ -70,7 +71,7 @@ class BaseScalarTest:
             init = dict(x_=x_)
             y_1 = jvp.compute(init=init, vout='y_', return_tape=False)
 
-            assert_allclose(y_1, y_)
+            assert_allclose(y_1, y_, rtol=self.rtol, atol=self.atol)
 
     def test_vjp_finite(self):
         vjp = self.tape.get_vjp()
@@ -79,7 +80,7 @@ class BaseScalarTest:
         _x = vjp.compute(init=init, vout='_x', return_tape=False)
 
         for x_, y_ in zip(self.x_, self.y_):
-            assert_allclose(self.inner(_x, x_), y_)
+            assert_allclose(self.inner(_x, x_), y_, rtol=self.rtol, atol=self.atol)
 
 class BaseVectorTest:
     """ Basic correctness of gradient against numerical for vector functions """
@@ -95,9 +96,11 @@ class BaseVectorTest:
 
     epsilon = 1e-7
 
+    rtol = 1e-7
+    atol = 1e-12
     def allclose(self, x, y):  # measuring the 
         assert numpy.shape(x) == numpy.shape(y)
-        return numpy.allclose(x, y)
+        return numpy.allclose(x, y, rtol=self.rtol, atol=self.atol)
 
     def inner(self, a, b):
         return numpy.sum(a * b)
@@ -163,7 +166,7 @@ class BaseVectorTest:
 
     def test_opr(self):
         # if this is wrong, apl is wrong
-        assert_allclose(self._evaluated_y, self.y)
+        assert_allclose(self._evaluated_y, self.y, rtol=self.rtol, atol=self.atol)
 
     def test_jvp_finite(self):
         jvp = self.tape.get_jvp()
