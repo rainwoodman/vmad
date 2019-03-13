@@ -318,7 +318,7 @@ def DriftFactor(pt, ai, ac, af):
 @autooperator('dx_i,p_i->dx,p,f')
 def leapfrog(dx_i, p_i, q, stages, pt, pm):
 
-    Om0 = pt.Om(1.0)
+    Om0 = pt.Om0
 
     dx = dx_i
     p = p_i
@@ -368,13 +368,13 @@ def firststep(rhok, q, a, pt, pm):
 
 @autooperator('rhok->dx,p,f')
 def nbody(rhok, q, stages, cosmology, pm):
-    from fastpm.background import PerturbationGrowth
+    from fastpm.background import MatterDominated
 
     stages = numpy.array(stages)
     mid = (stages[1:] * stages[:-1]) ** 0.5
     support = numpy.concatenate([mid, stages])
     support.sort()
-    pt = PerturbationGrowth(cosmology, a=support)
+    pt = MatterDominated(cosmology.Om0, a=support)
 
     dx, p = firststep(rhok, q, stages[0], pt, pm)
 
@@ -401,7 +401,7 @@ class cdot:
 
 class FastPMSimulation:
     def __init__(self, stages, cosmology, pm, q=None):
-        from fastpm.background import PerturbationGrowth
+        from fastpm.background import MatterDominated
 
         if q is None:
             q = pm.generate_uniform_particle_grid()
@@ -410,7 +410,7 @@ class FastPMSimulation:
         mid = (stages[1:] * stages[:-1]) ** 0.5
         support = numpy.concatenate([mid, stages])
         support.sort()
-        pt = PerturbationGrowth(cosmology, a=support)
+        pt = MatterDominated(cosmology.Om0, a=support)
 
         self.stages = stages
         self.pt = pt
@@ -491,7 +491,7 @@ class FastPMSimulation:
         stages = self.stages
         q = self.q
 
-        Om0 = pt.Om(1.0)
+        Om0 = pt.Om0
 
         f, potk = self.gravity(dx)
 
