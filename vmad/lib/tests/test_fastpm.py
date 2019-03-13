@@ -65,6 +65,37 @@ class Test_r2c_transfer_c2r(BaseScalarTest):
 #    def teardown(self):
 #        print(self.y_)
 
+class Test_apply_digitized_x(BaseScalarTest):
+    to_scalar = staticmethod(fastpm.to_scalar)
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4], BoxSize=4.0, comm=MPI.COMM_SELF)
+    kedges = numpy.linspace(0, 2 * numpy.pi / 4.0 * 3, 8)
+    tf = numpy.arange(len(kedges) - 1) + 1
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
+    x_ = create_bases(x)
+    y = NotImplemented
+
+    def model(self, x):
+        c = fastpm.r2c(x)
+        c = fastpm.apply_digitized(c, tf=self.tf, kedges=self.kedges)
+        r = fastpm.c2r(c)
+        return r
+
+class Test_apply_digitized_tf(BaseScalarTest):
+    to_scalar = staticmethod(fastpm.to_scalar)
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=4.0, comm=MPI.COMM_SELF)
+    kedges = numpy.linspace(0, 2 * numpy.pi / 4.0 * 3, 8)
+    y = NotImplemented
+    x = numpy.arange(len(kedges) - 1)
+    x_ = create_bases(x)
+    atol = 1e-9
+    def model(self, x):
+        c0 = self.pm.generate_whitenoise(seed=300, unitary=True, type='complex', mean=1.0)
+        c = fastpm.apply_digitized(c0, tf=x, kedges=self.kedges)
+        r = fastpm.c2r(c)
+        return r
+
 class Test_cdot(BaseScalarTest):
     to_scalar = staticmethod(linalg.to_scalar)
 
@@ -80,8 +111,6 @@ class Test_cdot(BaseScalarTest):
         x = fastpm.r2c(x)
         return fastpm.cdot(x, x1)
 
-#    def teardown(self):
-#        print(self.y_)
 
 class Test_paint_x(BaseScalarTest):
     to_scalar = staticmethod(fastpm.to_scalar)

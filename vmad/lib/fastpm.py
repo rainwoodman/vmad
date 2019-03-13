@@ -84,6 +84,56 @@ class apply_transfer:
         return dict(y_=x_.apply(filter))
 
 @operator
+class apply_digitized:
+    """
+    Apply a digitized isotropic transfer function, represented by
+    tf and kedges.
+
+    y = x * sum Pi lambda_i
+
+    where lambda is the transfer function per binned k, Pi is
+        projection operator for binned k.
+
+    vjp:
+        _lambda_i = <x * Pi , _y>
+        this is the binned cross power between x and _y.
+        for harmonic functions this is always real.
+        _x = _y * sum Pi lambda_i
+
+    jvp:
+        y_ = x sum Pi lambda_i_ + x_ sum Pi lambda_i
+
+    """
+    ain = 'x', 'tf'
+    aout = 'y'
+
+    def apl(node, x, tf, kedges):
+        # build the projection operators, stored as ind, where value of ind is the index in tf.
+        k2 = x.apply(lambda k, v: k.normp(2))[...].real
+        ind = (numpy.digitize(k2 ** 0.5, kedges) - 1).clip(0, len(tf) - 1)
+        return dict(y=x * tf[ind], ind=ind)
+
+    def vjp(node, _y, x, tf, ind ):
+        # compute the cross power between _y and x
+        weights = _y * numpy.conj(x)
+        # count how many modes each value in the field contributes
+        weights = weights.apply(x._expand_hermitian, kind='index', out=Ellipsis)
+
+        _tf_real = numpy.bincount(ind.flat, weights=weights.real.flat, minlength=len(tf))
+#        _tf_imag = numpy.bincount(ind.flat, weights=weights.imag.flat, minlength=len(tf))
+        _tf = _tf_real # assuming harmonic functions
+
+        return dict(_tf = _tf, _x = _y * tf[ind])
+
+    def jvp(node, tf_, x_, x, tf, ind):
+        y_ = 0
+        if tf_ is not 0:
+            y_ = y_ + x * tf_[ind]
+        if x_ is not 0:
+            y_ = y_ + x_ * tf[ind]
+        return y_
+
+@operator
 class paint:
     aout = {'mesh' : 'RealField'}
     ain =  {'x': 'ndarray',
