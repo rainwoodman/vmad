@@ -71,17 +71,17 @@ class apply_transfer:
     ain = {'x' : 'ComplexField'}
     aout = {'y' : 'ComplexField'}
 
-    def apl(node, x, tf):
+    def apl(node, x, tf, kind='wavenumber'):
         filter = lambda k, v: v * tf(k)
-        return dict(y=x.apply(filter))
+        return dict(y=x.apply(filter, kind=kind))
 
-    def vjp(node, _y, tf):
+    def vjp(node, _y, tf, kind):
         filter = lambda k, v: v * numpy.conj(tf(k))
-        return dict(_x=_y.apply(filter))
+        return dict(_x=_y.apply(filter, kind=kind))
 
-    def jvp(node, x_, tf):
+    def jvp(node, x_, tf, kind):
         filter = lambda k, v: v * tf(k)
-        return dict(y_=x_.apply(filter))
+        return dict(y_=x_.apply(filter, kind=kind))
 
 @operator
 class apply_digitized:
