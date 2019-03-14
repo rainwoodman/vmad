@@ -450,7 +450,7 @@ class cdot:
         return dict(y_=x1.cdot(x2_).real + x2.cdot(x1_).real)
 
 class FastPMSimulation:
-    def __init__(self, stages, cosmology, pm, q=None):
+    def __init__(self, stages, cosmology, pm, B=1, q=None):
         from fastpm.background import MatterDominated
 
         if q is None:
@@ -461,10 +461,14 @@ class FastPMSimulation:
         support = numpy.concatenate([mid, stages])
         support.sort()
         pt = MatterDominated(cosmology.Om0, a=support)
-
         self.stages = stages
         self.pt = pt
         self.pm = pm
+        self.fpm = ParticleMesh(Nmesh=pm.Nmesh * B,
+                        BoxSize=pm.BoxSize,
+                        dtype=pm.dtype,
+                        comm=pm.comm,
+                        resampler=pm.resampler)
         self.q = q
 
     def KickFactor(self, ai, ac, af):
@@ -503,7 +507,8 @@ class FastPMSimulation:
     @autooperator('dx->f,potk')
     def gravity(self, dx):
         q = self.q
-        pm = self.pm
+        # use Force PM resolution including B factor.
+        pm = self.fpm
 
         x = q + dx
 
@@ -537,7 +542,6 @@ class FastPMSimulation:
         dx, p = self.firststep(rhok)
 
         pt = self.pt
-        pm = self.pm
         stages = self.stages
         q = self.q
 
