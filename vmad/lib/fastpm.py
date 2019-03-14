@@ -113,7 +113,7 @@ class apply_digitized:
         ind = (numpy.digitize(k2 ** 0.5, kedges) - 1).clip(0, len(tf) - 1)
         return dict(y=x * tf[ind], ind=ind)
 
-    def vjp(node, _y, x, tf, ind ):
+    def vjp(node, _y, x, tf, ind):
         # compute the cross power between _y and x
         weights = _y * numpy.conj(x)
         # count how many modes each value in the field contributes
@@ -123,6 +123,8 @@ class apply_digitized:
 #        _tf_imag = numpy.bincount(ind.flat, weights=weights.imag.flat, minlength=len(tf))
         _tf = _tf_real # assuming harmonic functions
 
+        # gather from other ranks
+        _tf = x.pm.comm.allreduce(_tf)
         return dict(_tf = _tf, _x = _y * tf[ind])
 
     def jvp(node, tf_, x_, x, tf, ind):
