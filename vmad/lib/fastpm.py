@@ -83,6 +83,13 @@ class apply_transfer:
         filter = lambda k, v: v * tf(k)
         return dict(y_=x_.apply(filter, kind=kind))
 
+def _take_default(array, ind, default):
+    ind1 = ind.clip(0, len(array) - 1)
+    r = array[ind1]
+    # out of bound values, set to default
+    numpy.putmask(r, ind != ind1, default)
+    return r
+
 @operator
 class apply_digitized:
     """
@@ -110,29 +117,36 @@ class apply_digitized:
     def apl(node, x, tf, kedges):
         # build the projection operators, stored as ind, where value of ind is the index in tf.
         k2 = x.apply(lambda k, v: k.normp(2))[...].real
-        ind = (numpy.digitize(k2 ** 0.5, kedges) - 1).clip(0, len(tf) - 1)
-        return dict(y=x * tf[ind], ind=ind)
+        ind = numpy.digitize(k2 ** 0.5, kedges) - 1
+        # if ind is out of bound from tf, then we return 1
+        # because the transfer function is constant 1 on those bins.
+        return dict(y=x * _take_default(tf, ind, 1), ind=ind)
 
     def vjp(node, _y, x, tf, ind):
+        ind1 = ind.clip(0, len(tf) - 1)
+
         # compute the cross power between _y and x
         weights = _y * numpy.conj(x)
         # count how many modes each value in the field contributes
         weights = weights.apply(x._expand_hermitian, kind='index', out=Ellipsis)
+        # clear out of bound modes
+        numpy.putmask(weights.value, ind1 != ind, 0)
 
-        _tf_real = numpy.bincount(ind.flat, weights=weights.real.flat, minlength=len(tf))
-#        _tf_imag = numpy.bincount(ind.flat, weights=weights.imag.flat, minlength=len(tf))
+        _tf_real = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
+#        _tf_imag = numpy.bincount(ind1.flat, weights=weights.imag.flat, minlength=len(tf))
         _tf = _tf_real # assuming harmonic functions
 
         # gather from other ranks
         _tf = x.pm.comm.allreduce(_tf)
-        return dict(_tf = _tf, _x = _y * tf[ind])
+
+        return dict(_tf = _tf, _x = _y * _take_default(tf, ind, 1))
 
     def jvp(node, tf_, x_, x, tf, ind):
         y_ = 0
         if tf_ is not 0:
-            y_ = y_ + x * tf_[ind]
+            y_ = y_ + x * _take_default(tf_, ind, 0)
         if x_ is not 0:
-            y_ = y_ + x_ * tf[ind]
+            y_ = y_ + x_ * _take_default(tf, ind, 1)
         return y_
 
 @operator
