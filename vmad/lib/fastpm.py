@@ -93,14 +93,30 @@ def _take_default(array, ind, default):
 @operator
 class apply_digitized:
     """
-    Apply a digitized isotropic transfer function, represented by
-    tf and kedges.
+    Apply a digitized transfer function, represented by
+    `tf` and a digitizer function, which converts the mode label
+    to indices in `tf`.
+
+    if ind < 0 or ind >= len(tf), the mode is skipped.
 
     y = x * sum Pi lambda_i
 
     where lambda is the transfer function per binned k, Pi is
         projection operator for binned k.
 
+    Parameters
+    ----------
+    tf : array_like
+        values of digitized transfer function
+
+    digitizer : func([k0, k1, k2, ...]) -> ind
+        decided which bin the mode falls in. 
+        the mode labels depends on the value of kind.
+
+    kind : string, 'wavenumber', 'circular', 'index'.
+
+    Notes
+    -----
     vjp:
         _lambda_i = <x * Pi , _y>
         this is the binned cross power between x and _y.
@@ -114,10 +130,20 @@ class apply_digitized:
     ain = 'x', 'tf'
     aout = 'y'
 
-    def apl(node, x, tf, kedges):
+    @staticmethod
+    def isotropic_wavenumber(kedges):
+        def digitizer(k):
+            k2 = k.normp(2)
+            ind = numpy.digitize(k2 ** 0.5, kedges) - 1
+            return ind
+        return digitizer
+
+    def apl(node, x, tf, digitizer, kind='wavenumber'):
+
         # build the projection operators, stored as ind, where value of ind is the index in tf.
-        k2 = x.apply(lambda k, v: k.normp(2))[...].real
-        ind = numpy.digitize(k2 ** 0.5, kedges) - 1
+        ind = numpy.zeros(x.value.shape, dtype='intp')
+        x.apply(lambda k, v: digitizer(k), kind=kind, out=ind)
+
         # if ind is out of bound from tf, then we return 1
         # because the transfer function is constant 1 on those bins.
         return dict(y=x * _take_default(tf, ind, 1), ind=ind)

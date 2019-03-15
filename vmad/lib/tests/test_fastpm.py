@@ -77,7 +77,8 @@ class Test_apply_digitized_x(BaseScalarTest):
 
     def model(self, x):
         c = fastpm.r2c(x)
-        c = fastpm.apply_digitized(c, tf=self.tf, kedges=self.kedges)
+        digitizer = fastpm.apply_digitized.isotropic_wavenumber(self.kedges)
+        c = fastpm.apply_digitized(c, tf=self.tf, digitizer=digitizer, kind='wavenumber')
         r = fastpm.c2r(c)
         return r
 
@@ -92,7 +93,8 @@ class Test_apply_digitized_tf(BaseScalarTest):
     atol = 1e-9
     def model(self, x):
         c0 = self.pm.generate_whitenoise(seed=300, unitary=True, type='complex', mean=1.0)
-        c = fastpm.apply_digitized(c0, tf=x, kedges=self.kedges)
+        digitizer = fastpm.apply_digitized.isotropic_wavenumber(self.kedges)
+        c = fastpm.apply_digitized(c0, tf=x, digitizer=digitizer, kind='wavenumber')
         r = fastpm.c2r(c)
         return r
 
