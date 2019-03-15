@@ -138,7 +138,8 @@ class apply_digitized:
             return ind
         return digitizer
 
-    def apl(node, x, tf, digitizer, kind='wavenumber'):
+    def apl(node, x, tf, digitizer, kind='wavenumber', mode='amplitude'):
+        assert mode in ('amplitude', 'phase')
 
         # build the projection operators, stored as ind, where value of ind is the index in tf.
         ind = numpy.zeros(x.value.shape, dtype='intp')
@@ -146,33 +147,61 @@ class apply_digitized:
 
         # if ind is out of bound from tf, then we return 1
         # because the transfer function is constant 1 on those bins.
-        return dict(y=x * _take_default(tf, ind, 1), ind=ind)
+        if mode == 'amplitude':
+            y = x * _take_default(tf, ind, 1)
+            eit = None
+        elif mode == 'phase':
+            eit = numpy.exp(1j * tf)
+            y = x * _take_default(eit, ind, 1)
+        return dict(y=y, ind=ind, eit=eit)
 
-    def vjp(node, _y, x, tf, ind):
+    def vjp(node, _y, x, tf, ind, eit, mode):
         ind1 = ind.clip(0, len(tf) - 1)
+        mask = ind1 != ind
 
-        # compute the cross power between _y and x
-        weights = _y * numpy.conj(x)
-        # count how many modes each value in the field contributes
-        weights = weights.apply(x._expand_hermitian, kind='index', out=Ellipsis)
-        # clear out of bound modes
-        numpy.putmask(weights.value, ind1 != ind, 0)
+        if mode == 'amplitude':
+            # compute the cross power between _y and x
+            weights = _y * numpy.conj(x)
+            # count how many modes each value in the field contributes
+            weights = weights.apply(x._expand_hermitian, kind='index', out=Ellipsis)
+            # clear out of bound modes
+            numpy.putmask(weights.value, mask, 0)
+            _tf_real = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
+    #        _tf_imag = numpy.bincount(ind1.flat, weights=weights.imag.flat, minlength=len(tf))
+            _tf = _tf_real # assuming harmonic functions
+            _x = _y * _take_default(tf, ind, 1)
 
-        _tf_real = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
-#        _tf_imag = numpy.bincount(ind1.flat, weights=weights.imag.flat, minlength=len(tf))
-        _tf = _tf_real # assuming harmonic functions
+        elif mode == 'phase':
+            y = x * _take_default(eit, ind, 0)
+
+            # compute the cross power between _y and x
+            weights = _y * numpy.conj(1j * y)
+            # count how many modes each value in the field contributes
+            weights = weights.apply(x._expand_hermitian, kind='index', out=Ellipsis)
+            # clear out of bound modes
+            numpy.putmask(weights.value, mask, 0)
+
+            _tf = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
+            _x = _y * _take_default(eit.conj(), ind, 1)
 
         # gather from other ranks
         _tf = x.pm.comm.allreduce(_tf)
 
-        return dict(_tf = _tf, _x = _y * _take_default(tf, ind, 1))
+        return dict(_tf = _tf, _x = _x)
 
-    def jvp(node, tf_, x_, x, tf, ind):
+    def jvp(node, tf_, x_, x, tf, ind, eit, mode):
         y_ = 0
-        if tf_ is not 0:
-            y_ = y_ + x * _take_default(tf_, ind, 0)
-        if x_ is not 0:
-            y_ = y_ + x_ * _take_default(tf, ind, 1)
+        if mode == 'amplitude':
+            if tf_ is not 0:
+                y_ = y_ + x * _take_default(tf_, ind, 0)
+            if x_ is not 0:
+                y_ = y_ + x_ * _take_default(tf, ind, 1)
+        elif mode == 'phase':
+            if tf_ is not 0:
+                y_ = y_ + x * _take_default(eit * 1j * tf_, ind, 0)
+            if x_ is not 0:
+                y_ = y_ + x_ * _take_default(eit, ind, 1)
+
         return y_
 
 @operator

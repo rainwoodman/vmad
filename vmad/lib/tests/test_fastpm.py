@@ -65,7 +65,7 @@ class Test_r2c_transfer_c2r(BaseScalarTest):
 #    def teardown(self):
 #        print(self.y_)
 
-class Test_apply_digitized_x(BaseScalarTest):
+class Test_apply_digitized_amp_x(BaseScalarTest):
     to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4], BoxSize=4.0, comm=MPI.COMM_SELF)
@@ -82,10 +82,28 @@ class Test_apply_digitized_x(BaseScalarTest):
         r = fastpm.c2r(c)
         return r
 
-class Test_apply_digitized_tf(BaseScalarTest):
+class Test_apply_digitized_phase_x(BaseScalarTest):
+    to_scalar = staticmethod(fastpm.to_scalar)
+
+    pm = fastpm.ParticleMesh(Nmesh=[8, 8], BoxSize=4.0, comm=MPI.COMM_SELF)
+    kedges = numpy.linspace(0, 2 * numpy.pi / 4.0 * 3, 8)
+    tf = numpy.linspace(-1 * numpy.pi, 4 * numpy.pi, (len(kedges) - 1))
+    x = pm.generate_whitenoise(seed=300, unitary=True, type='real')
+    x_ = create_bases(x)
+    y = NotImplemented
+
+    def model(self, x):
+        c = fastpm.r2c(x)
+        digitizer = fastpm.apply_digitized.isotropic_wavenumber(self.kedges)
+        c = fastpm.apply_digitized(c, tf=self.tf, digitizer=digitizer, kind='wavenumber', mode='phase')
+        r = fastpm.c2r(c)
+        return r
+
+class Test_apply_digitized_amp_tf(BaseScalarTest):
     to_scalar = staticmethod(fastpm.to_scalar)
 
     pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=4.0, comm=MPI.COMM_SELF)
+    # avoid nyquist!
     kedges = numpy.linspace(0, 2 * numpy.pi / 4.0 * 3, 8)
     y = NotImplemented
     x = numpy.arange(len(kedges) - 1)
@@ -95,6 +113,22 @@ class Test_apply_digitized_tf(BaseScalarTest):
         c0 = self.pm.generate_whitenoise(seed=300, unitary=True, type='complex', mean=1.0)
         digitizer = fastpm.apply_digitized.isotropic_wavenumber(self.kedges)
         c = fastpm.apply_digitized(c0, tf=x, digitizer=digitizer, kind='wavenumber')
+        r = fastpm.c2r(c)
+        return r
+
+class Test_apply_digitized_phase_tf(BaseScalarTest):
+    to_scalar = staticmethod(fastpm.to_scalar)
+
+    pm = fastpm.ParticleMesh(Nmesh=[4, 4, 4], BoxSize=4.0, comm=MPI.COMM_SELF)
+    kedges = numpy.linspace(0, 2 * numpy.pi / 4.0 * 3, 8)
+    y = NotImplemented
+    x = numpy.linspace(-1 * numpy.pi, 4 * numpy.pi, (len(kedges) - 1))
+    x_ = create_bases(x)
+    atol = 1e-9
+    def model(self, x):
+        c0 = self.pm.generate_whitenoise(seed=300, unitary=True, type='complex', mean=1.0)
+        digitizer = fastpm.apply_digitized.isotropic_wavenumber(self.kedges)
+        c = fastpm.apply_digitized(c0, tf=x, digitizer=digitizer, kind='wavenumber', mode='phase')
         r = fastpm.c2r(c)
         return r
 
