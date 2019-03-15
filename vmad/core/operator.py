@@ -20,6 +20,10 @@ class Operator(object):
         self.ain = _to_ordereddict(prototype.ain)
         self.aout = _to_ordereddict(prototype.aout)
 
+        # alias all static methods from the prototype
+        for name, value in prototype.__dict__.items():
+            if isinstance(value, staticmethod):
+                setattr(self, name, getattr(prototype, name))
 
     def __call__(self, *args, **kwargs):
         stacklevel = kwargs.pop('__stacklevel__', -2)
