@@ -83,9 +83,10 @@ class apply_transfer:
         filter = lambda k, v: v * tf(k)
         return dict(y_=x_.apply(filter, kind=kind))
 
-def _take_default(array, ind, default):
+def _take_default(array, ind, conj, default):
     ind1 = ind.clip(0, len(array) - 1)
     r = array[ind1]
+    r[conj] = numpy.conj(r)[conj]
     # out of bound values, set to default
     numpy.putmask(r, ind != ind1, default)
     return r
@@ -109,8 +110,9 @@ class apply_digitized:
     tf : array_like
         values of digitized transfer function
 
-    digitizer : func([k0, k1, k2, ...]) -> ind
-        decided which bin the mode falls in. 
+    digitizer : func([k0, k1, k2, ...]) -> ind, conj
+        decided which bin the mode falls in, and if the mode needs
+        to be conjugated.
         the mode labels depends on the value of kind.
 
     kind : string, 'wavenumber', 'circular', 'index'.
@@ -135,7 +137,7 @@ class apply_digitized:
         def digitizer(k):
             k2 = k.normp(2)
             ind = numpy.digitize(k2 ** 0.5, kedges) - 1
-            return ind
+            return ind, numpy.zeros_like(ind, dtype='?')
         return digitizer
 
     def apl(node, x, tf, digitizer, kind='wavenumber', mode='amplitude'):
@@ -143,19 +145,22 @@ class apply_digitized:
 
         # build the projection operators, stored as ind, where value of ind is the index in tf.
         ind = numpy.zeros(x.value.shape, dtype='intp')
-        x.apply(lambda k, v: digitizer(k), kind=kind, out=ind)
+        conj = numpy.zeros(x.value.shape, dtype='?')
+
+        x.apply(lambda k, v: digitizer(k)[0], kind=kind, out=ind)
+        x.apply(lambda k, v: digitizer(k)[1], kind=kind, out=conj)
 
         # if ind is out of bound from tf, then we return 1
         # because the transfer function is constant 1 on those bins.
         if mode == 'amplitude':
-            y = x * _take_default(tf, ind, 1)
+            y = x * _take_default(tf, ind, conj, 1)
             eit = None
         elif mode == 'phase':
             eit = numpy.exp(1j * tf)
-            y = x * _take_default(eit, ind, 1)
-        return dict(y=y, ind=ind, eit=eit)
+            y = x * _take_default(eit, ind, conj, 1)
+        return dict(y=y, ind=ind, conj=conj, eit=eit)
 
-    def vjp(node, _y, x, tf, ind, eit, mode):
+    def vjp(node, _y, x, tf, ind, conj, eit, mode):
         ind1 = ind.clip(0, len(tf) - 1)
         mask = ind1 != ind
 
@@ -169,10 +174,10 @@ class apply_digitized:
             _tf_real = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
     #        _tf_imag = numpy.bincount(ind1.flat, weights=weights.imag.flat, minlength=len(tf))
             _tf = _tf_real # assuming harmonic functions
-            _x = _y * _take_default(tf, ind, 1)
+            _x = _y * _take_default(tf, ind, conj, 1)
 
         elif mode == 'phase':
-            y = x * _take_default(eit, ind, 0)
+            y = x * _take_default(eit, ind, conj, 0)
 
             # compute the cross power between _y and x
             weights = _y * numpy.conj(1j * y)
@@ -182,25 +187,25 @@ class apply_digitized:
             numpy.putmask(weights.value, mask, 0)
 
             _tf = numpy.bincount(ind1.flat, weights=weights.real.flat, minlength=len(tf))
-            _x = _y * _take_default(eit.conj(), ind, 1)
+            _x = _y * _take_default(eit.conj(), ind, conj, 1)
 
         # gather from other ranks
         _tf = x.pm.comm.allreduce(_tf)
 
         return dict(_tf = _tf, _x = _x)
 
-    def jvp(node, tf_, x_, x, tf, ind, eit, mode):
+    def jvp(node, tf_, x_, x, tf, ind, conj, eit, mode):
         y_ = 0
         if mode == 'amplitude':
             if tf_ is not 0:
-                y_ = y_ + x * _take_default(tf_, ind, 0)
+                y_ = y_ + x * _take_default(tf_, ind, conj, 0)
             if x_ is not 0:
-                y_ = y_ + x_ * _take_default(tf, ind, 1)
+                y_ = y_ + x_ * _take_default(tf, ind, conj, 1)
         elif mode == 'phase':
             if tf_ is not 0:
-                y_ = y_ + x * _take_default(eit * 1j * tf_, ind, 0)
+                y_ = y_ + x * _take_default(eit * 1j * tf_, ind, conj, 0)
             if x_ is not 0:
-                y_ = y_ + x_ * _take_default(eit, ind, 1)
+                y_ = y_ + x_ * _take_default(eit, ind, conj, 1)
 
         return y_
 
