@@ -5,6 +5,31 @@ from vmad.lib.linalg import add
 from vmad.core.model import Builder
 import pytest
 
+def test_model_build():
+    from vmad import autooperator, operator
+    from vmad.core.symbol import Literal
+
+    @autooperator('Sl->Xh')
+    def upsample2(Sl, Ql):  #pm has the same resolution as Ql
+
+        layout = add(Ql, 1)
+        print(id(layout._model), len(layout._model))
+        Ql1 = add(Ql, layout)
+        print(id(layout._model), id(Ql1._model), len(layout._model))
+        Sl1 = add(Sl, layout)
+        print(id(layout._model), id(Ql1._model), len(layout._model))
+
+        dis_d = add(Ql1, Sl1)
+        print(id(layout._model), id(Ql1._model), len(layout._model))
+
+        return dis_d
+
+    Sl = 1
+    model2 = upsample2.build(Ql=Sl)
+
+    Xh = model2.compute('Xh', init=dict(Sl=Sl))
+    (y, ), [vjp] = model2.compute_with_vjp(init=dict(Sl=Sl), v=dict(_Xh=1))
+
 def test_model_partial():
     with Builder() as m:
         a = m.input('a')

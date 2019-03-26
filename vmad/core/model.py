@@ -14,6 +14,7 @@ class Model(list):
         self._vout = []
 
         self._name = uuid.uuid4().hex
+        self._symbols = set()
 
     def __hash__(self):
         return hash(self._name)
@@ -27,6 +28,9 @@ class Model(list):
 
         self._vin.extend(other._vin)
         self._vout.extend(other._vout)
+
+        for symbol in other._symbols:
+            self.anchor(symbol)
 
         list.extend(self, other)
 
@@ -78,6 +82,8 @@ class Model(list):
             symbol._model_ref = self
         else:
             symbol._model_ref = weakref.ref(self)
+
+        self._symbols.add(symbol)
 
     def output(self, **kwargs):
         for varname, oldvar in kwargs.items():

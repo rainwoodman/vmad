@@ -77,12 +77,17 @@ class Primitive:
 
         node = Node(self, _frameinfo)
 
+        # FIXME: this is tricky.
+        # we guarentee prepending all necessary sub-models
+        # necessary for this node before this
+        # node; therefore this shall always work as long
+        # as we always build a model this way.
+        # the algorithm here does not explicitly say this.
+
         # gather models
         models = self._walk_models(kwargs, kwout)
         # consolidate
         model = Model.consolidate(models)
-        # replace models mentioned in kwargs
-        self._walk_models(kwargs, kwout, reset=model)
 
         basename = model.unique_name(self.name)
 
@@ -163,20 +168,23 @@ class Primitive:
         return kwargs, kwout
 
 
-    def _walk_models(self, kwargs, kwout, reset=None):
+    def _walk_models(self, kwargs, kwout):
         models = set()
 
+        q = []
         for argname in self.argnames:
             var = kwargs[argname]
-            models = models.union(_infer_models(var, reset=reset))
+            q.append(var)
 
         for argname in self.outnames:
             # will automatically generate kwout, and they will be properly anchored
             if argname not in kwout: continue
             var = kwout[argname]
+            q.append(var)
 
-            models = models.union(_infer_models(var, reset=reset))
-
+        for var in q:
+            m1 = _infer_models(var)
+            models = models.union(m1)
         return models
 
 
@@ -191,12 +199,9 @@ def _check_var_references(var):
     if var._has_reference():
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
-def _infer_models(var, reset=None):
+def _infer_models(var):
 
     if isinstance(var, Symbol):
-        if reset is not None:
-            reset.anchor(var)
-
         model = var._model
         if model is not None:
             return set([model])
@@ -206,7 +211,7 @@ def _infer_models(var, reset=None):
     if isinstance(var, (list, tuple)):
         models = set()
         for v in var:
-            models = models.union(_infer_models(v, reset=reset))
+            models = models.union(_infer_models(v))
 
         return models
 
