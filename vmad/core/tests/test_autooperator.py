@@ -97,7 +97,6 @@ def test_model_nested():
     assert b == 4.0
     assert c == 4.0
 
-    raise
     vjp = tape.get_vjp()
     init = dict(_b = 1.0, _c=1.0)
     _a = vjp.compute(init=init, vout='_a', monitor=print)
