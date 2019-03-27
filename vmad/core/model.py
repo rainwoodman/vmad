@@ -117,18 +117,22 @@ class Model(list):
 
         init = OrderedDict(init)
 
-        tape = Tape(self, init)
+        if return_tape:
+            tape = Tape(self, init)
+        else:
+            tape = None
+
         ctx = Context(**init)
 
         out = ctx.compute(self, vout=vout,
                         tape=tape,
                         monitor=monitor)
 
-        tape.finalize(OrderedDict(zip(vout, out)))
+        if return_tape:
+            tape.finalize(out)
 
-        if return_dict:
-            out = OrderedDict(zip(vout, out))
-        else:
+        if not return_dict:
+            out = list(out.values())
             if single_return:
                 out = out[0]
 

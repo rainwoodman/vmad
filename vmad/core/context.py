@@ -1,5 +1,6 @@
 from .error import UnexpectedOutput, makeExecutionError, ModelError
 from .stdlib import terminal
+from collections import OrderedDict
 
 _raise_internal_errors = True
 
@@ -81,7 +82,7 @@ class Context(dict):
             if monitor is not None:
                 monitor(node, node.varin, node.varout, self)
 
-        r = [r[varname] for varname in vout]
+        r = OrderedDict([(varname, r[varname]) for varname in vout])
 
         return r
 
@@ -108,7 +109,8 @@ class Context(dict):
                 raise makeExecutionError(
                     "Error computing node : %s" % (node), e)
 
-        tape.append(node, node.record(kwargs, r))
+        if tape is not None:
+            tape.append(node, node.record(kwargs, r))
 
         for argname, var in node.varout.items():
             var._store(self, r[argname])

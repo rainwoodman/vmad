@@ -27,7 +27,7 @@ class Tape(list):
             out : dict / OrderedDict
         """
         assert isinstance(out, dict)
-        self.out = out
+        self.out = out.copy()
         self._completed = True
 
     def append(self, node, impl_kwargs):
