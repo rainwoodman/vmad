@@ -88,22 +88,26 @@ def test_model_nested():
     with Builder() as m:
         a = m.input('a')
         b = example(a, 2)
-        m.output(b=b)
+        c = example.forgetful(a, 2)
+        m.output(b=b, c=c)
 
     init = dict(a = 1.0)
-    b, tape = m.compute(init=init, vout='b', monitor=print, return_tape=True)
+    (b, c), tape = m.compute(init=init, vout=['b', 'c'], monitor=print, return_tape=True)
 
     assert b == 4.0
+    assert c == 4.0
 
+    raise
     vjp = tape.get_vjp()
-    init = dict(_b = 1.0)
+    init = dict(_b = 1.0, _c=1.0)
     _a = vjp.compute(init=init, vout='_a', monitor=print)
-    assert _a == 4.0
+    assert _a == 8.0
 
     jvp = tape.get_jvp()
     init = dict(a_ = 1.0)
-    b_ = jvp.compute(init=init, vout='b_', monitor=print)
+    b_, c_ = jvp.compute(init=init, vout=['b_', 'c_'], monitor=print)
     assert b_ == 4.0
+    assert c_ == 4.0
 
 def test_autooperator_additional_hyper():
     @autooperator
@@ -155,6 +159,10 @@ def test_autooperator_bind():
 def test_autooperator_compute():
 
     y = example.build(n=2).compute(vout='y', init=dict(x=1))
+
+def test_autooperator_forgetful_compute():
+
+    y = example.forgetful.build(n=2).compute(vout='y', init=dict(x=1))
 
 def test_autooperator_precompute():
 
