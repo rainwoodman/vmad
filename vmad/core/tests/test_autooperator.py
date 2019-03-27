@@ -147,8 +147,8 @@ def test_autooperator_bind():
     assert b == c
     assert b == 4.0
 
-    assert not hasattr(example, '__bound_model__')
-    assert hasattr(op1, '__bound_model__')
+    assert example.__bound_model__ is None
+    assert op1.__bound_model__ is not None
 
     op1.build()
 
@@ -173,8 +173,8 @@ def test_autooperator_precompute():
     assert b == c
     assert b == 4.0
 
-    assert not hasattr(example, '__bound_tape__')
-    assert hasattr(op1, '__bound_tape__')
+    assert example.__bound_tape__ is None
+    assert op1.__bound_tape__ is not None
 
     op1.build()
 
@@ -195,8 +195,8 @@ def test_autooperator_precompute2():
     assert b == c
     assert b == 4.0
 
-    assert not hasattr(example_func, '__bound_tape__')
-    assert hasattr(op1, '__bound_tape__')
+    assert example_func.__bound_tape__ is None
+    assert op1.__bound_tape__ is not None
 
     op1.build()
 

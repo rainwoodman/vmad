@@ -5,6 +5,7 @@ from .context import Context
 from .error import ModelError
 
 class AutoOperator(Operator):
+    """ Base class to support operators with on demand tape and prerecorded tape """
 
     def __init__(self, prototype, argnames):
         Operator.__init__(self, prototype)
@@ -17,29 +18,40 @@ class AutoOperator(Operator):
 
         self.argnames = argnames
         self.hyperargs = {}
+        self.__bound_tape__ = None
+        self.__bound_model__ = None
+        self.__tapename__ = '$$tape$$'
+
+    @property
+    def forgetful(self):
+        obj = AutoOperator(self.prototype, self.argnames)
+        obj.__bound_tape__ = self.__bound_tape__
+        obj.__bound_model__ = self.__bound_model__
+        obj.__tapename__ = None
+
+        return obj
 
     @property
     def apl(self):
-        return self.get_apl(tapename='$$tape$$', return_tape=False)
+        return self.get_apl(tapename=self.__tapename__)
 
-    def get_apl(self, tapename, return_tape=True):
+    def get_apl(self, tapename):
         """ get an apl primitive, if tapename is not None, the primitive returns the tape as well. """
         def apl(node, **kwargs):
-            y = _compute(node.operator, kwargs, tapename=tapename)
+            # node.operator shall be the same as self.
+            y = node.operator._compute(kwargs, tapename=tapename)
             return y
 
         def rcd(node, **kwargs):
             return kwargs
 
         outnames = list(self.aout.keys())
-        if return_tape:
-            outnames.append(tapename)
+
         return _make_primitive(self, 'apl', apl, argnames=self.argnames, outnames=outnames, record_impl=rcd)
 
     @property
     def vjp(self):
-        # will take an extra argument $$tape$$
-        return self.get_vjp(tapename='$$tape$$')
+        return self.get_vjp(tapename=self.__tapename__)
 
     def get_vjp(self, tapename):
         # add v arguments
@@ -55,7 +67,7 @@ class AutoOperator(Operator):
                 tape = kwargs.pop(tapename)
             else:
                 # run the apl operator to obtain the tape
-                y = _compute(self, kwargs, '$$tape$$')
+                y = node.operator._compute(kwargs, '$$tape$$')
                 tape = y['$$tape$$']
 
             v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a.startswith('_')]
@@ -69,14 +81,23 @@ class AutoOperator(Operator):
 
     @property
     def jvp(self):
+        return self.get_jvp(tapename=self.__tapename__)
+
+    def get_jvp(self, tapename):
         argnames_jvp = list(self.argnames)
-        argnames_jvp.append('$$tape$$')
+        if tapename is not None:
+            argnames_jvp.append(tapename)
 
         for argname in self.ain:
             argnames_jvp.append(argname + '_')
 
         def jvp(node, **kwargs):
-            tape = kwargs['$$tape$$']
+            if tapename is not None:
+                tape = kwargs[tapename]
+            else:
+                # run the apl operator to obtain the tape
+                y = node.operator._compute(kwargs, '$$tape$$')
+                tape = y['$$tape$$']
 
             v =    [(a, kwargs[a]) for a in node.primitive.ain.keys() if a .endswith('_')]
 
@@ -87,51 +108,97 @@ class AutoOperator(Operator):
 
         return _make_primitive(self, 'jvp', jvp, argnames=argnames_jvp)
 
+    def _compute(self, kwargs, tapename):
+        if self.__bound_tape__ is not None:
+            tape = self.__bound_tape__
+            y = {}
+            y.update(tape.out)
+        else :
+            m = self._build(kwargs)
+            init = [(a, kwargs[a]) for a in self.ain.keys()]
+
+            vout = list(self.aout.keys())
+            if tapename is not None:
+                y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
+            else:
+                y = m.compute(vout, init=init, return_dict=True, return_tape=False)
+
+        if tapename is not None:
+            y[tapename] = tape
+
+        return y
+
+    def _build(self, kwargs):
+        if self.__bound_model__ is not None:
+            m = self.__bound_model__
+            return m
+
+        impl = unbound(self.prototype.main)
+
+        model_args = {}
+        # copy extra args of the main function
+        for argname in self.apl.argnames:
+            if argname not in self.ain:
+                model_args[argname] = kwargs[argname]
+
+        with Builder() as m:
+            # add input args as variables
+            for argname in self.ain:
+                model_args[argname] = m.input(argname)
+            r = impl(m, **model_args)
+            # assert outputs are generated
+            for argname in self.aout:
+                if argname not in r:
+                    raise ModelError("output arg '%s' is not produced by the model" % argname)
+            m.output(**r)
+        return m
+
     # FIXME: add docstring / argnames
     # shall be the list of extra args
-    def build(obj, **kwargs):
+    def build(self, **kwargs):
         """ Create a computing graph model for the operator with the given hyper parameters """
         for argname in kwargs:
-            if argname in obj.ain:
+            if argname in self.ain:
                 raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
 
-        return _build(obj, kwargs)
+        return self._build(kwargs)
 
-    def precompute(obj, **kwargs):
+
+    def precompute(self, **kwargs):
         """ Create a bound autooperator where the hyperparameter and parameters are both given; the model
             is compuated, and the tape is recorded.
 
             Instantiating the returned operator will be an exact replay of the tape, regardless of the parameters
         """
-        y = _compute(obj, kwargs, '$$tape$$')
-        m = _build(obj, kwargs)
+        y = self._compute(kwargs, '$$tape$$')
+        m = self._build(kwargs)
         tape = y['$$tape$$']
 
         # create a new operator, because we need new primitives that points to this operator.
-        obj = AutoOperator(obj.prototype, argnames=obj.argnames)
+        obj = AutoOperator(self.prototype, argnames=self.argnames)
         obj.__bound_tape__ = tape
         obj.__bound_model__ = m
 
         return obj
 
-    def bind(obj, **hyperargs):
+    def bind(self, **hyperargs):
         """ Create a bound autooperator where the hyperparameter are already given.
 
             Instantiating the returned operator no longer requires the hyperparameters.
         """
         for argname in hyperargs:
-            if argname in obj.ain:
+            if argname in self.ain:
                 raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
 
-        m = _build(obj, hyperargs)
+        m = self._build(hyperargs)
 
         # remove those args already defined
         argnames = tuple([
-                argname for argname in obj.apl.argnames if argname not in hyperargs
+                argname for argname in self.apl.argnames if argname not in hyperargs
                 ])
 
         # create a new operator, because we need new primitives that points to this operator.
-        obj = AutoOperator(obj.prototype, argnames=argnames)
+        obj = AutoOperator(self.prototype, argnames=argnames)
         obj.__bound_model__ = m
         obj.hyperargs = hyperargs
 
@@ -272,51 +339,4 @@ def autooperator(*args):
         return wrapped
     else:
         return wrapped(func)
-
-def _build(obj, kwargs):
-    if hasattr(obj, '__bound_model__'):
-        m = obj.__bound_model__
-        return m
-
-    impl = unbound(obj.prototype.main)
-
-    model_args = {}
-    # copy extra args of the main function
-    for argname in obj.apl.argnames:
-        if argname not in obj.ain:
-            model_args[argname] = kwargs[argname]
-
-    with Builder() as m:
-        # add input args as variables
-        for argname in obj.ain:
-            model_args[argname] = m.input(argname)
-        r = impl(m, **model_args)
-        # assert outputs are generated
-        for argname in obj.aout:
-            if argname not in r:
-                raise ModelError("output arg '%s' is not produced by the model" % argname)
-        m.output(**r)
-    return m
-
-def _compute(obj, kwargs, tapename):
-    if hasattr(obj, '__bound_tape__'):
-        tape = obj.__bound_tape__
-        y = {}
-        y.update(tape.out)
-    else :
-        m = _build(obj, kwargs)
-        init = [(a, kwargs[a]) for a in obj.ain.keys()]
-
-        vout = list(obj.aout.keys())
-        if tapename is not None:
-            y, tape = m.compute(vout, init=init, return_dict=True, return_tape=True)
-        else:
-            y = m.compute(vout, init=init, return_dict=True, return_tape=False)
-
-    if tapename is not None:
-        y[tapename] = tape
-
-    return y
-
-
 
