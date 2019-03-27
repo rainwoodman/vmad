@@ -83,6 +83,9 @@ def test_autooperator_as_member():
     y = m.compute(vout='b', init=dict(a=1))
     assert y == 3
 
+    y = obj.example_func.build().compute(vout='y', init=dict(x=1.))
+    assert y == 3
+
 def test_model_nested():
 
     with Builder() as m:
