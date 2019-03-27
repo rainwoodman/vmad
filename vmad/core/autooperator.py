@@ -155,8 +155,9 @@ class AutoOperator(Operator):
 
     # FIXME: add docstring / argnames
     # shall be the list of extra args
-    def build(self, **kwargs):
+    def build(__instance__1234__, **kwargs):
         """ Create a computing graph model for the operator with the given hyper parameters """
+        self = __instance__1234__
         for argname in kwargs:
             if argname in self.ain:
                 raise ModelError("argname %s is an input, shall not be used to produce a model" % argname)
