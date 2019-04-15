@@ -7,9 +7,9 @@ def test_error_infer():
     with Builder() as m:
         with Builder() as m2:
             a = m.input('a')
-            b = m2.input('a')
+            b = m2.input('b')
             with pytest.raises(InferError):
-                add(x1=a, x2=b)
+                c = add(x1=a, x2=b)
 
 def test_error_bad_arg1():
     from vmad.core.error import BadArgument

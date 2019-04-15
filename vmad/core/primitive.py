@@ -169,7 +169,7 @@ class Primitive:
 
 
     def _walk_models(self, kwargs, kwout):
-        models = set()
+        models = list()
 
         q = []
         for argname in self.argnames:
@@ -184,7 +184,7 @@ class Primitive:
 
         for var in q:
             m1 = _infer_models(var)
-            models = models.union(m1)
+            _join_models(models, m1)
         return models
 
 
@@ -199,21 +199,27 @@ def _check_var_references(var):
     if var._has_reference():
         raise OverwritePrecaution("Overwritting used symbols is not supported. Because it breaks vjp.")
 
+def _join_models(models, m1):
+    for m in m1:
+        if m not in models:
+            models.append(m)
+
 def _infer_models(var):
 
     if isinstance(var, Symbol):
         model = var._model
         if model is not None:
-            return set([model])
+            return [model]
         else:
-            return set()
+            return []
 
     if isinstance(var, (list, tuple)):
-        models = set()
+        models = []
         for v in var:
-            models = models.union(_infer_models(v))
+            m1 = _infer_models(v)
+            _join_models(models, m1)
 
         return models
 
-    return set()
+    return []
 

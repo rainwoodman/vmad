@@ -19,6 +19,10 @@ class Model(list):
     def __hash__(self):
         return hash(self._name)
 
+    def __eq__(self, other):
+        # needed in making sure model discovery is unique.
+        return self._name == other._name
+
     def extend(self, other):
         """ concatenate the model with another model.
         """
