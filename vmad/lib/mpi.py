@@ -48,6 +48,7 @@ class allbcast:
 
     def apl(node, x, comm):
         # value should already be identical on all ranks.
+        comm.barrier()
         return x
 
     def vjp(node, _y, comm):
