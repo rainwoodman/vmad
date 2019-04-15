@@ -71,3 +71,14 @@ def test_operator_assert_true():
         c = m.compute(vout='c', init=dict(a=1.09))
 
     c = m.compute(vout='c', init=dict(a=1))
+
+def test_div_error():
+    from vmad import autooperator
+    @autooperator('a->c')
+    def test(a, b):
+        c= b/a
+        return c
+    model = test.build(b=3)
+    (y, ), (vjp, ) = model.compute_with_vjp(init=dict(a=2), v=dict(_c=1.0))
+    assert y == 1.5
+    assert vjp == -0.75

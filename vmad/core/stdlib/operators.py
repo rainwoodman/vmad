@@ -96,19 +96,21 @@ class div(binary):
         from vmad.core.symbol import Literal
         # the other value is not needed, 0 should work.
         if node.is_literal('x1'):
-            x2inv = 0
+            x1fac = 0
         else:
-            x2inv = 1 / x2
+            x1fac = 1 / x2
         if node.is_literal('x2'):
-            x1 = 0
-        return dict(x1=x1, x2inv=x2inv)
+            x2fac = 0
+        else:
+            x2fac = x1 * (1 / x2) * (1 / x2)
+        return dict(x1fac=x1fac, x2fac=x2fac)
 
-    def vjp(node, _y, x1, x2inv):
-        return dict(_x1 = _y * x2inv,
-                    _x2 = -_y * x1 * (x2inv * x2inv))
+    def vjp(node, _y, x1fac, x2fac):
+        return dict(_x1 = _y * x1fac,
+                    _x2 = -_y * x2fac)
 
-    def jvp(node, x1_, x2_, x1, x2inv):
-        return dict(y_ = x1_ * x2inv - x1 * (x2inv * x2inv) * x2_)
+    def jvp(node, x1_, x2_, x1fac, x2fac):
+        return dict(y_ = x1_ * x1fac - x2fac * x2_)
 
 @operator
 class mod(binary):
