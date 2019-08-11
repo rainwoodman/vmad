@@ -1,6 +1,7 @@
 from __future__ import print_function
 from pprint import pprint
 from vmad.lib import linalg
+from vmad.core import stdlib
 import numpy
 
 from vmad import Builder
@@ -230,3 +231,22 @@ def test_take_chained():
     (y,), (_x, ) = (func.build().compute_with_vjp(init=dict(x=numpy.array([3, 4, 5])), v=dict(_y=1.0)))
     assert y == 12
     assert_array_equal(_x, (1, 1, 1))
+
+def test_variance_vjp():
+    # test case contributed by BiweiDai
+    # not necessarily the best way to compute variance.
+    from vmad import autooperator
+    from numpy.testing import assert_array_equal
+    @autooperator('x->y')
+    def test(x):
+        size = stdlib.eval(x, lambda x: numpy.prod(x.shape))
+        mean = linalg.sum(x, axis=None) / size
+        mean = linalg.broadcast_to(mean, stdlib.eval(x, lambda x : x.shape))
+        x = x - mean
+        y = linalg.sum(x**2, axis=None) / size
+        return y
+
+    model = test.build()
+    y, [vjp] = model.compute_with_vjp(init=dict(x=numpy.array([1, 3])), v=dict(_y=1.0))
+    assert_array_equal(vjp, (-1, 1))
+    assert_array_equal(y, 1)
