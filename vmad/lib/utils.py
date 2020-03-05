@@ -1,7 +1,7 @@
 import numpy as np
 from vmad import operator
 
-def forward_difference(param, func, epsilon, args=None):
+def forward_difference(param, func, epsilon, args=None, mode='forward'):
     """
     Find the finite differencing of a  given function based off of an input parameter
     Params:
@@ -16,10 +16,20 @@ def forward_difference(param, func, epsilon, args=None):
     forward differencing solution to function with respect to input parameter
 
     """
+    if mode=='forward':
+        k1, k2, k3=1, 0, 1
+    
+    elif mode=='backward':
+        k1, k2, k3=-1, 0, -1
+    
+    elif mode=='central':
+        k1, k2, k3=1/2, -1/2, 1
+    
     if args is None:
-        return (func(param+epsilon) - func(param))/epsilon
+        return k3*(func(param+k1*epsilon) - func(param+k2*epsilon))/epsilon
+    
     else:
-        return (func(param+epsilon, *args) - func(param, *args))/epsilon
+        return k3*(func(param+k1*epsilon, *args) - func(param+k2*epsilon, *args))/epsilon
 
 
 
@@ -28,14 +38,14 @@ class finite_difference:
     ain = {'param': '*'}
     aout = {'diff':'*'}
 
-    def apl(node, param, func, epsilon, args=None):
-        delta = forward_difference(param, func, epsilon, args)
+    def apl(node, param, func, epsilon, args=None, mode='forward'):
+        delta = forward_difference(param, func, epsilon, args, mode)
         return dict(diff = delta)
 
-    def vjp(node, _diff, param, func, epsilon, args=None):
-        delta = forward_difference(param, func, epsilon, args)
+    def vjp(node, _diff, param, func, epsilon, args=None, mode='forward'):
+        delta = forward_difference(param, func, epsilon, args, mode)
         return dict(_param = np.dot(delta, _diff))
 
-    def jvp(node, param_, param, func, epsilon, args=None):
-        delta = forward_difference(param, func, epsilon, args)
+    def jvp(node, param_, param, func, epsilon, args=None, mode='forward'):
+        delta = forward_difference(param, func, epsilon, args, mode)
         return dict(diff_ = np.dot(delta, param_))
