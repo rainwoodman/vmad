@@ -461,7 +461,7 @@ class CosmologyFactory():
 
 
 
-@autooperator(' dx_i,p_i->dx,p,f')
+@autooperator(' dx_i,p_i, Om0->dx,p,f')
 def leapfrog(dx_i, p_i, Om0, q, stages, pm):
 
     stages = numpy.array(stages)
@@ -515,7 +515,7 @@ def firststep(rhok, q, a, pt, pm):
     dx = dx1 + dx2
     return dict(dx=dx, p=p)
 
-@autooperator('rhok->dx,p,f')
+@autooperator('rhok, Om0->dx,p,f')
 def nbody(rhok,Om0, q, stages, cosmology, pm):
     from fastpm.background import MatterDominated
 
@@ -570,10 +570,10 @@ class FastPMSimulation:
                         resampler=pm.resampler)
         self.q = q
 
-    def KickFactor(self, ai, ac, af, Om0):
+    def KickFactor(self, ai, ac, af):
         return 1 / (ac ** 2 * pt.E(ac)) * (pt.Gf(af) - pt.Gf(ai)) / pt.gf(ac)
 
-    def DriftFactor(self, ai, ac, af, Om0):
+    def DriftFactor(self, ai, ac, af):
         return 1 / (ac ** 3 * pt.E(ac)) * (pt.Gp(af) - pt.Gp(ai)) / pt.gp(ac)
 
     @autooperator('rhok->dx, p')
@@ -648,18 +648,18 @@ class FastPMSimulation:
             ac = (ai * af) ** 0.5
 
             # kick
-            dp = f * (self.KickFactor(ai, ai, ac, Om0) * 1.5 * Om0)
+            dp = f * (self.KickFactor(ai, ai, ac) * 1.5 * Om0)
             p = p + dp
 
             # drift
-            ddx = p * self.DriftFactor(ai, ac, af, Om0)
+            ddx = p * self.DriftFactor(ai, ac, af)
             dx = dx + ddx
 
             # force
             f, potk = self.gravity(dx)
 
             # kick
-            dp = f * (self.KickFactor(ac, af, af, Om0) * 1.5 * Om0)
+            dp = f * (self.KickFactor(ac, af, af) * 1.5 * Om0)
             p = p + dp
 
         f = f * (1.5 * Om0)
