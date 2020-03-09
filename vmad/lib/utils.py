@@ -1,7 +1,7 @@
 import numpy as np
 from vmad import operator
 
-def forward_difference(param, func, epsilon, args=None, mode='forward'):
+def finite_diff(param, func, epsilon, args=None, mode='forward'):
     """
     Find the finite differencing of a  given function based off of an input parameter
     Params:
@@ -18,19 +18,14 @@ def forward_difference(param, func, epsilon, args=None, mode='forward'):
     """
     if mode=='forward':
         k1, k2, k3=1, 0, 1
-    
+
     elif mode=='backward':
         k1, k2, k3=-1, 0, -1
-    
+
     elif mode=='central':
         k1, k2, k3=1/2, -1/2, 1
-    
-    if args is None:
-        return k3*(func(param+k1*epsilon) - func(param+k2*epsilon))/epsilon
-    
-    else:
-        return k3*(func(param+k1*epsilon, *args) - func(param+k2*epsilon, *args))/epsilon
 
+    return k3*(func(param+k1*epsilon) - func(param+k2*epsilon))/epsilon
 
 
 @operator
@@ -38,14 +33,16 @@ class finite_difference:
     ain = {'param': '*'}
     aout = {'diff':'*'}
 
-    def apl(node, param, func, epsilon, args=None, mode='forward'):
-        delta = forward_difference(param, func, epsilon, args, mode)
-        return dict(diff = delta)
+    def apl(node, param, func, epsilon, mode='central'):
+        f = func(param)
+        return dict(diff=f)
 
-    def vjp(node, _diff, param, func, epsilon, args=None, mode='forward'):
-        delta = forward_difference(param, func, epsilon, args, mode)
-        return dict(_param = np.dot(delta, _diff))
+    def vjp(node, _diff, param, func, epsilon, mode='central'):
+        delta = finite_diff(param, lambda x: func(x), epsilon, mode=mode)
+        return dict(_param=np.dot(delta, _diff))
 
-    def jvp(node, param_, param, func, epsilon, args=None, mode='forward'):
-        delta = forward_difference(param, func, epsilon, args, mode)
-        return dict(diff_ = np.dot(delta, param_))
+    def jvp(node, param_, param, func, epsilon, mode='central'):
+        delta = finite_diff(param, lambda x: func(x), epsilon, mode=mode)
+        return dict(diff_=np.dot(delta, param_))
+
+
