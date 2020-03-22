@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from pprint import pprint
-from vmad.core.operator import operator
+from vmad.core.operator import operator, ZeroGradient
 from vmad.core.model import Builder
 import pytest
 
@@ -46,12 +46,12 @@ def test_operator_zero():
     assert c == 3
 
     vjp = tape.get_vjp()
-    init = dict(_c=0)
+    init = dict(_c=ZeroGradient)
     _a = vjp.compute(init=init, vout='_a', monitor=print)
     assert _a == 0
 
     jvp = tape.get_jvp()
-    init = dict(a_=0)
+    init = dict(a_=ZeroGradient)
     c_ = jvp.compute(init=init, vout='c_', monitor=print)
     assert c_ == 0
 
@@ -173,6 +173,21 @@ class stack:
     def jvp(node, args_, args, axis):
         return numpy.stack(args_, axis)
 
+@operator
+class zero_jac:
+    ain = 'args'
+    aout = 'y'
+
+    def apl(node, args):
+        return dict(y=3, nargs=len(args))
+
+    def vjp(node, nargs):
+        return ZeroGradient
+
+    def jvp(node, nargs):
+        return ZeroGradient
+
+
 
 def test_operator_list_in():
     from numpy.testing import assert_array_equal
@@ -198,6 +213,26 @@ def test_operator_list_in():
     c_ = jvp.compute(init=init, vout='c_', monitor=print)
 
     assert_array_equal(c_, [[1, 1, 1], [1, 1, 1]])
+
+# This was based on VHBoehm and Maxelee's test case on stdlib.eval
+# failure with a list input in MADLens
+def test_operator_list_with_zero_vjp():
+    with Builder() as m:
+        value = m.input('value')
+        r = zero_jac([value])
+        m.output(my_array=r)
+
+    init = dict(value=1)
+    my_array, tape = m.compute(init=init, vout='my_array', return_tape=True)
+    assert my_array == 3
+
+    vjp = tape.get_vjp()
+    _value = vjp.compute(init=dict(_my_array=5), vout='_value')
+    assert _value == 0
+
+    jvp = tape.get_jvp()
+    my_array_= jvp.compute(init=dict(value_=5), vout='my_array_')
+    assert my_array_ == 0
 
 def test_operator_list_out():
     from numpy.testing import assert_array_equal

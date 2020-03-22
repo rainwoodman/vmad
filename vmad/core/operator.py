@@ -11,6 +11,26 @@
 """
 from collections import OrderedDict
 
+class ZeroGradientType(int):
+    def __new__(self):
+        return int.__new__(ZeroGradientType, 0)
+
+    # for zip
+    def __iter__(self):
+        while True:
+            yield ZeroGradient
+
+    def __array__(self, dtype):
+        import numpy
+        return numpy.array(0, dtype=dtype)
+
+    @staticmethod
+    def is_zero(obj):
+        return isinstance(obj, ZeroGradientType)
+
+# A universal zero used in jvp and vjp
+ZeroGradient = ZeroGradientType()
+
 class EmptyPrimitive:
     argnames = []
 
@@ -231,10 +251,10 @@ def zerobypass(impl):
         self = __node__
         ain = self.primitive.ain
         aout = self.primitive.aout
-        if all(kwargs[argname] is 0 for argname in ain):
+        if all(ZeroGradient.is_zero(kwargs[argname]) for argname in ain):
             d = {}
             for argname in aout:
-                d[argname] = 0
+                d[argname] = ZeroGradient
             return d
         return impl(self, **kwargs)
     zerobypassimpl.original = impl

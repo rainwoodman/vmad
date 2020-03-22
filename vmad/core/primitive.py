@@ -4,7 +4,7 @@ from collections import OrderedDict
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
 from .node import Node
 
-from .symbol import Symbol, assymbol, BaseSymbol, Literal
+from .symbol import Symbol, assymbol, BaseSymbol, Literal, List
 from .model import Model
 
 def get_default_args(func):
@@ -88,7 +88,6 @@ class Primitive:
         models = self._walk_models(kwargs, kwout)
         # consolidate
         model = Model.consolidate(models)
-
         basename = model.unique_name(self.name)
 
         for argname in self.argnames:
@@ -213,7 +212,7 @@ def _infer_models(var):
         else:
             return []
 
-    if isinstance(var, (list, tuple)):
+    if isinstance(var, (List, list, tuple)):
         models = []
         for v in var:
             m1 = _infer_models(v)

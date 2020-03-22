@@ -4,7 +4,7 @@
     These functions are triggered during model execution.
 """
 
-from vmad.core.operator import operator
+from vmad.core.operator import operator, ZeroGradient
 
 @operator
 class eval:
@@ -27,8 +27,8 @@ class eval:
             from builtins import eval
             return dict(y=eval(function, dict(x=x)))
 
-    def vjp(node): return 0
-    def jvp(node): return 0
+    def vjp(node): return ZeroGradient
+    def jvp(node): return ZeroGradient
 
 @operator
 class watchpoint:
@@ -48,7 +48,7 @@ class watchpoint:
         monitor(x)
         return dict(y = x)
 
-    def vjp(node): return 0
+    def vjp(node): return ZeroGradient
     def jvp(node): return
 
 @operator
@@ -60,8 +60,8 @@ class assert_isinstance:
         if not isinstance(obj, class_or_tuple):
             raise TypeError('Expecting an instance of %s, got %s', repr(class_or_tuple), repr(type(obj)))
 
-    def vjp(node): return 0
-    def jvp(node): return 0
+    def vjp(node): return ZeroGradient
+    def jvp(node): return ZeroGradient
 
 @operator
 class assert_true:
@@ -81,5 +81,5 @@ class assert_true:
         if not func(x):
             raise AssertionError('Assertion failed on %s(%s).' % (func, x))
 
-    def vjp(node): return 0
-    def jvp(node): return 0
+    def vjp(node): return ZeroGradient
+    def jvp(node): return ZeroGradient

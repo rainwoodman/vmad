@@ -185,3 +185,4 @@ def test_model_attr():
     init = dict(a_=1.0)
     c_ = jvp.compute(init=init, vout='c_', monitor=print)
     assert c_ == 1.0
+

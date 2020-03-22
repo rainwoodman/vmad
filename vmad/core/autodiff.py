@@ -173,6 +173,7 @@ def vjpmodel(tape):
             if var_p is not None:
                 kwout['_' + argname] = var_p
 
+        # result unused; symbols directly connected via kwout
         vjp_of_p.create_node(kwargs=kwargs, kwout=kwout)
 
         # combine partial derivatives.
