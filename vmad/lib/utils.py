@@ -1,7 +1,7 @@
 import numpy as np
 from vmad import operator
 
-def finite_diff(param, func, epsilon, args=None, mode='forward'):
+def finite_diff(param, func, epsilon,  mode='forward'):
     """
     Find the finite differencing of a  given function based off of an input parameter
     Params:

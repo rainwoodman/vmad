@@ -559,9 +559,8 @@ class FastPMSimulation:
         mid = (stages[1:] * stages[:-1]) ** 0.5
         self.support = numpy.concatenate([mid, stages])
         self.support.sort()
-        pt = MatterDominated(cosmology.Om0, a=self.support)
+        self.pt = MatterDominated(cosmology.Omega0, a=self.support)#MatterDominated(cosmology.Om0, a=self.support)
         self.stages = stages
-        self.pt = pt
         self.pm = pm
         self.fpm = ParticleMesh(Nmesh=pm.Nmesh * B,
                         BoxSize=pm.BoxSize,
