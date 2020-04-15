@@ -26,7 +26,7 @@ class ZeroGradientType(int):
 
     @staticmethod
     def is_zero(obj):
-        return isinstance(obj, ZeroGradientType) or obj == 0
+        return isinstance(obj, ZeroGradientType) or obj is 0 or obj is 0.0
 
 # A universal zero used in jvp and vjp
 ZeroGradient = ZeroGradientType()
