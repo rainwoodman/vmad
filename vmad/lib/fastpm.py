@@ -632,8 +632,8 @@ class FastPMSimulation:
         f = linalg.stack(r1, axis=-1)
         return dict(f=f, potk=p)
 
-    @autooperator('Om0, rhok->dx,p,f')
-    def run(self, Om0, rhok):
+    @autooperator('rhok->dx,p,f')
+    def run(self, rhok):
 
         dx, p = self.firststep(rhok)
 
@@ -647,7 +647,7 @@ class FastPMSimulation:
             ac = (ai * af) ** 0.5
 
             # kick
-            dp = f * (self.KickFactor(ai, ai, ac) * 1.5 * Om0)
+            dp = f * (self.KickFactor(ai, ai, ac) * 1.5 * self.Om0)
             p = p + dp
 
             # drift
@@ -658,10 +658,10 @@ class FastPMSimulation:
             f, potk = self.gravity(dx)
 
             # kick
-            dp = f * (self.KickFactor(ac, af, af) * 1.5 * Om0)
+            dp = f * (self.KickFactor(ac, af, af) * 1.5 * self.Om0)
             p = p + dp
 
-        f = f * (1.5 * Om0)
+        f = f * (1.5 *self.Om0)
         return dict(dx=dx, p=p, f=f)
 
 
