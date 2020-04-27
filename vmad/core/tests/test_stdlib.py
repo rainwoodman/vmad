@@ -1,9 +1,13 @@
 from __future__ import print_function
 
 from pprint import pprint
-from vmad.core.model import Builder
 import pytest
+
+from vmad.core.model import Builder
 from vmad.lib import linalg
+from vmad.testing import BaseVectorTest, BaseScalarTest
+
+import numpy
 
 def test_operator_watchpoint():
     from vmad.core.stdlib import watchpoint
@@ -82,3 +86,21 @@ def test_div_error():
     (y, ), (vjp, ) = model.compute_with_vjp(init=dict(a=2), v=dict(_c=1.0))
     assert y == 1.5
     assert vjp == -0.75
+
+class Test_finite_vector(BaseScalarTest):
+    x = numpy.arange(10)
+    y = numpy.sum(x ** 2)
+
+    @staticmethod
+    def to_scalar(x):
+        return x
+
+    @staticmethod
+    def func(param):
+        return numpy.einsum("k,k->", numpy.ones(len(param)), param ** 2)
+
+    def model(self, x):
+        from vmad.core.stdlib import finite_operator
+        c = finite_operator(x, lambda param: self.func(param), epsilon=1e-6)
+        return c
+
