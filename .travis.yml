@@ -2,6 +2,7 @@ language: python
 
 python:
     - 3.6
+    - 3.7
 
 env:
     - NUMPY_VERSION=1.15.4 OMP_NUM_THREADS=2
@@ -28,9 +29,9 @@ script:
 deploy:
     - provider: pypi
       distributions: sdist
-      user: "rainwoodman"
+      user: "__token__"  # rainwoodman
       password:
-        secure: "FB22L78H9kZgru7DBgvSpxTLgrNsSsoavV9QgWdJzu+GSj0kecn6wcRPuUd31i5lIH1vUr9cK83pESiX7P+jhwgd3C3tApid938ARaDbvABLutD9v3eC+zmYfWAHs+wCvnUajfmMJ68bmKF3X07qS/+2qEU1kjL2JGNrMjmkHLd0D5vWL2WAOs2fjZgXya2Qkd4D45Cszx4ZqA7VYL/bhNKW+dNTn6IDjDQkMPVopG6Pj3EysCgYonWUt22brafyJjEBQ6mLmBxbij66vtFSKMqJ8qvsa4Ral74TmS5RvDKN8tFObRfmicNv0ajWeMuV7ivRc7CCp5Payx4iSWQVj0vhpkKfuoUyHI6VUPPw9jSirTaPdRsLw4Yo7JwVPFHGlqtUYfemPjq2u7gwA8wXetSW9HwU8tf2CH8IDP/1gpYFGPJNeaJexdwhE7axrH9xngFkrNRKXlnO7W4XJ1jNgRxPoRUWOnTxiquxkvCfpT3VbB1YwwlAXc6lUKeJfzskiep/IPbOcE/O23/QmQgm39Zr99i0L2mdRIc6lDN7/lT96O2eRsUNQ2A6cqMu39+5MfI8fO/mReu2Ln6HDK3Qen5jX9hCjGM6uO4Jq//EULYm1lPDTog+dtoiAwoyU/flJL9/SS2f7epUpZaixFv84bTFx+upk1SIn1eJLnMx04E="
+        secure: "fIeicrW3xhzjhDB20j+k6ebcJ7OSQjzlgWzLgwXk0TFervXjfo5QpE9K6dOTyHEQMhZaeiaPQYqtG0KXEx07TpqRspKZ0tZ3lc1XKRiATg08OTmsHHkVPmuxR0UUcBMPCa4XwuCr4J+4xx35j4bKImpltv5fR7CKPsg+slgwQxnF5lWO5StmGogHtvXD2NgvWAa45CiTCkFxK5I92bjg80LTg3+ECppWJCXovHeNDGl5qZ3b148FYd0DeNfIQMPJHOdD6hp6QQJLlwMA8Leao47Fl1FWTLfCQw7VWpyC5QGpikeTKZqOAhAoq/a6bpjhlDovk4hc6d9cH6gUDgmhjDCDmo8UJ54Nx6xYjkhTlYrgqEnwHxLtBoY9JLRnd2HjDo4BtQUL8lJrz+aEZLBEP2eUBfL8g6dhmPrWwlPGNWRcjaXu7fuhUMdSioUBzEPMnCoU+C5Pw51hae8HOgus02v9oSg2+SdfQXEk6iL3EhHQmwBPY7qgchumOx8qNbOBFvKD/xqB6T0ueSn/CmNDNnop7aEj7uUO57fO9sSLjxYGv1TjIANucbCMXGig4RP7Guw4iSBBTgCnkMWWcWey8FkHOBFaEyP9bYC1TMNXLJ6+wntkIphtGOnplJVB9sm9IOyURPwwqCJ3rhuJz1n5jcP+NsG4QOlXPalDhINrt7Y="
       on:
         tags   : true
         condition : ${TRAVIS_JOB_NUMBER##*.} == 1
