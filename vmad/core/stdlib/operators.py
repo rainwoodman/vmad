@@ -64,7 +64,7 @@ class sub(binary):
         return dict(_x1 = _y, _x2 = -_y)
 
     def jvp(node, x1_, x2_):
-        return dict(y_ = x1_ + x2_)
+        return dict(y_ = x1_ - x2_)
 
 @operator
 class mul(binary):
