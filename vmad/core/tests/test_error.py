@@ -1,5 +1,6 @@
 from vmad.core.model import Builder
 from vmad.core.stdlib import add
+
 import pytest
 
 def test_error_infer():

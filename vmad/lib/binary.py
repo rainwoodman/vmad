@@ -1,6 +1,5 @@
 from vmad import operator
-from vmad.core.symbol import Literal, ZeroLiteral
-from vmad.core.symbol import Symbol
+
 import numpy
 
 class binary_ufunc:

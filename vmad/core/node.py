@@ -1,3 +1,6 @@
+from .symbol import BaseSymbol
+from .symbol import Literal
+
 class Node:
     """ A node on the computing graph.
 
@@ -10,6 +13,8 @@ class Node:
         self.primitive = primitive
         self.operator = primitive.operator
         self.prototype = primitive.operator.prototype
+        if _frameinfo is None:
+            _frameinfo = ("Unknown", "Unknown")
         self._frameinfo = _frameinfo
 
         # add a few aliases for accessing primitive attributes
@@ -45,7 +50,6 @@ class Node:
 
             Returns: dict, result for each varout.
         """
-        from .symbol import BaseSymbol
         for key, value in kwargs.items():
             assert not isinstance(value, BaseSymbol)
 
@@ -88,7 +92,6 @@ class Node:
         d = {}
         d.update(r)
         d.update(kwargs)
-        from .symbol import BaseSymbol
         for key, value in d.items():
             assert not isinstance(value, BaseSymbol)
         return self.primitive.record_impl(self, **d)
@@ -106,5 +109,4 @@ class Node:
         if func == 'apl': return node.operator.apl
 
     def is_literal(self, argname):
-        from vmad.core.symbol import Literal
         return isinstance(self.varin[argname].symbol, Literal)

@@ -1,12 +1,10 @@
-from __future__ import print_function
-from pprint import pprint
-from vmad.lib import linalg
-import numpy
-
-from vmad.lib import binary
-
 from vmad import Builder
+from vmad.lib import binary
+from vmad.lib import linalg
 from vmad.testing import BaseVectorTest
+
+import numpy
+from pprint import pprint
 
 class BinaryUfuncVectorTest(BaseVectorTest):
     ufunc = None

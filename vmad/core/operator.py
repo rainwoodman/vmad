@@ -9,6 +9,8 @@
     you only need to define a model and the ain, aout
 
 """
+from .primitive import Primitive
+
 from collections import OrderedDict
 
 class ZeroGradientType(int):
@@ -34,7 +36,7 @@ ZeroGradient = ZeroGradientType()
 class EmptyPrimitive:
     argnames = []
 
-class Operator(object):
+class BaseOperator(object):
     def __init__(self, prototype):
         self.prototype = prototype
         self.ain = _to_ordereddict(prototype.ain)
@@ -61,27 +63,26 @@ class Operator(object):
         else:
             return self
 
-    @property
-    def apl(self):
+
+class Operator(BaseOperator):
+    def __init__(self, prototype):
+        BaseOperator.__init__(self, prototype)
+
         if hasattr(self.prototype, 'rcd'):
             record_impl = unbound(self.prototype.rcd)
         else:
             record_impl = record_copy_autodiff
 
-        return _make_primitive(self, 'apl', unbound(self.prototype.apl),
+        self._apl = _make_primitive(self, 'apl', unbound(self.prototype.apl),
                 record_impl=record_impl)
 
-    @property
-    def vjp(self):
         if hasattr(self.prototype, 'vjp'):
-            return _make_primitive(self, 'vjp', unbound(self.prototype.vjp))
+            self._vjp = _make_primitive(self, 'vjp', unbound(self.prototype.vjp))
         else:
-            return EmptyPrimitive
+            self._vjp = EmptyPrimitive
 
-    @property
-    def jvp(self):
         if hasattr(self.prototype, 'jvp'):
-            return _make_primitive(self, 'jvp', unbound(self.prototype.jvp))
+            self._jvp = _make_primitive(self, 'jvp', unbound(self.prototype.jvp))
         else:
             #return EmptyPrimitive
             argnames_jvp = []
@@ -92,7 +93,21 @@ class Operator(object):
                 else:
                     argnames_jvp.append(argname)
 
-            return _make_primitive(self, 'jvp', default_jvp, argnames=argnames_jvp)
+            self._jvp = _make_primitive(self, 'jvp', default_jvp, argnames=argnames_jvp)
+
+    @property
+    def apl(self):
+        return self._apl
+
+    @property
+    def vjp(self):
+        return self._vjp
+
+    @property
+    def jvp(self):
+        return self._jvp
+
+
 
 class InstanceOperator(Operator):
     def __init__(self, base, instance):
@@ -267,8 +282,6 @@ def _make_primitive(opr, func, impl, argnames=None, outnames=None, record_impl=r
         defined in the operator class.
 
     """
-    from .primitive import Primitive
-
     assert func in ('apl', 'vjp', 'jvp')
 
     aout = OrderedDict()

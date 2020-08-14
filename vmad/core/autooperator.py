@@ -1,14 +1,16 @@
-import inspect
-from .operator import _make_primitive, Operator, unbound, _to_ordereddict
-from .model import Builder
-from .context import Context
 from .error import ModelError
+from .model import Builder
+from .operator import BaseOperator
+from .operator import _make_primitive
+from .operator import unbound
 
-class AutoOperator(Operator):
+import inspect
+
+class AutoOperator(BaseOperator):
     """ Base class to support operators with on demand tape and prerecorded tape """
 
     def __init__(self, prototype, argnames):
-        Operator.__init__(self, prototype)
+        BaseOperator.__init__(self, prototype)
 
         impl = unbound(prototype.main)
 

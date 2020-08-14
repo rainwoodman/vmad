@@ -1,5 +1,12 @@
-from .symbol import ZeroLiteral, Literal, Symbol, ListRef, List, IgnoredGradient
-from .stdlib import add
+from . import get_stdlib
+from .model import Model
+
+from .symbol import IgnoredGradient
+from .symbol import List
+from .symbol import ListRef
+from .symbol import Literal
+from .symbol import Symbol
+from .symbol import ZeroLiteral
 
 class SymbolCollection(dict):
     """ A dictionary to look up collected symbols generated
@@ -58,7 +65,7 @@ class SymbolCollection(dict):
 
     def check(self, model):
         for var in self.values():
-            assert var._model is model
+            assert Model.get_model(var) is model
 
 def prepare_opr_kwargs(record, model):
     """ generate a first guess of kwargs based on the record.
@@ -116,7 +123,7 @@ def connect_output_vjp(ref, symbols):
         # because we intent to overwrite it.
         var_f2 = symbols.add_vjp(var)
 
-        add.apl.create_node(dict(x1=var_f, x2=var_p), dict(y=var_f2))
+        get_stdlib().add.apl.create_node(dict(x1=var_f, x2=var_p), dict(y=var_f2), stacklevel=None)
 
 def create_output_jvp(var, symbols):
     if isinstance(var, List):
@@ -174,7 +181,7 @@ def vjpmodel(tape):
                 kwout['_' + argname] = var_p
 
         # result unused; symbols directly connected via kwout
-        vjp_of_p.create_node(kwargs=kwargs, kwout=kwout)
+        vjp_of_p.create_node(kwargs=kwargs, kwout=kwout, stacklevel=None)
 
         # combine partial derivatives.
         for argname, ref in p.varin.items():
@@ -215,7 +222,7 @@ def jvpmodel(tape):
             jvp_var = create_output_jvp(var, symbols)
             kwout[argname + '_'] = jvp_var
 
-        jvp_of_p.create_node(kwargs=kwargs, kwout=kwout)
+        jvp_of_p.create_node(kwargs=kwargs, kwout=kwout, stacklevel=None)
 
     # mark outputs
     for var in tape.model._vout:

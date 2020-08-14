@@ -1,11 +1,13 @@
-import inspect
-from collections import OrderedDict
-
 from .error import UnpackError, OverwritePrecaution, MissingArgument, BrokenPrimitive, BadArgument
-from .node import Node
-
-from .symbol import Symbol, assymbol, BaseSymbol, Literal, List
 from .model import Model
+from .node import Node
+from .symbol import assymbol
+from .symbol import List
+from .symbol import Literal
+from .symbol import Symbol
+
+from collections import OrderedDict
+import inspect
 
 def get_default_args(func):
     signature = inspect.signature(func)
@@ -66,15 +68,18 @@ class Primitive:
         """
         if kwout is None: # generate output arguments.
             kwout = {}
-        # remember the frame info
-        previous_frame = inspect.currentframe()
 
-        while stacklevel < 0:
-            previous_frame = previous_frame.f_back
-            stacklevel = stacklevel + 1
+        if stacklevel is not None:
+            # remember the frame info
+            previous_frame = inspect.currentframe()
 
-        _frameinfo = inspect.getframeinfo(previous_frame)
+            while stacklevel < 0:
+                previous_frame = previous_frame.f_back
+                stacklevel = stacklevel + 1
 
+            _frameinfo = inspect.getframeinfo(previous_frame)
+        else:
+            _frameinfo = None
         node = Node(self, _frameinfo)
 
         # FIXME: this is tricky.
@@ -189,7 +194,6 @@ class Primitive:
 
 
 def _check_var_references(var):
-    from .symbol import List
     if isinstance(var, List):
         for v in var:
             _check_var_references(v)
@@ -206,7 +210,7 @@ def _join_models(models, m1):
 def _infer_models(var):
 
     if isinstance(var, Symbol):
-        model = var._model
+        model = Model.get_model(var)
         if model is not None:
             return [model]
         else:

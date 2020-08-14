@@ -1,13 +1,13 @@
-from __future__ import print_function
-from pprint import pprint
-from vmad.lib import fastpm, linalg
-import numpy
 from vmad import autooperator
-
+from vmad.lib import fastpm, linalg
 from vmad.testing import BaseScalarTest
+
 from mpi4py import MPI
+import numpy
 from numpy.testing import assert_allclose
+
 from pmesh.pm import RealField, ComplexField
+from pprint import pprint
 
 def create_bases(x):
     bases = numpy.eye(x.size).reshape([-1] + list(x.shape))

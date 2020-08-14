@@ -1,10 +1,8 @@
-from __future__ import print_function
-
-from vmad import Builder
 from vmad import autooperator
+from vmad import Builder
 from vmad import operator
-
 from vmad.lib.linalg import add
+
 from pprint import pprint
 
 def test_vmad3_functional():

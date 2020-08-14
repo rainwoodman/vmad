@@ -1,6 +1,8 @@
 from vmad import operator
-from vmad.core.symbol import Literal, ZeroLiteral
+from vmad.core.symbol import Literal
 from vmad.core.symbol import Symbol
+from vmad.core.symbol import ZeroLiteral
+
 import numpy
 
 class unary_ufunc:

@@ -1,7 +1,4 @@
 from vmad import operator
-
-import numpy
-
 # a few commonly used operators are expected to be
 # compatible with the python ones.
 from vmad.core.stdlib import mul, add, abs, pow, div, mod
@@ -9,6 +6,7 @@ from vmad.core.stdlib import mul, add, abs, pow, div, mod
 # import all functions defined in unary module
 from vmad.lib.unary import *
 
+import numpy
 from numpy.core.einsumfunc import _parse_einsum_input
 
 @operator

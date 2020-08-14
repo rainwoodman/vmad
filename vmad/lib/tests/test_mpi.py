@@ -1,11 +1,9 @@
-from __future__ import print_function
-from pprint import pprint
 from vmad.lib import linalg, mpi
-
-import numpy
-
 from vmad.testing import BaseScalarTest
+
 from mpi4py import MPI
+import numpy
+from pprint import pprint
 
 class Test_allreduce(BaseScalarTest):
     to_scalar = staticmethod(linalg.to_scalar)
