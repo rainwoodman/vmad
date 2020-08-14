@@ -1,5 +1,7 @@
 from vmad.core.operator import operator
 
+from builtins import abs as abs_
+
 class unary:
     ain = 'x'
     aout = 'y'
@@ -34,9 +36,7 @@ class pos(unary):
 @operator
 class abs(unary):
     def apl(node, x):
-        # function name was replaced
-        from builtins import abs
-        return dict(y = abs(x))
+        return dict(y = abs_(x))
 
     def vjp(node, _y, x):
         return dict(_x = _y * (x > 0) + -_y * (x < 0))
@@ -93,7 +93,6 @@ class div(binary):
         return dict(y = x1 * x2inv, x2inv=x2inv)
 
     def rcd(node, x1, x2inv, y, x2):
-        from vmad.core.symbol import Literal
         # the other value is not needed, 0 should work.
         if node.is_literal('x1'):
             x1fac = 0

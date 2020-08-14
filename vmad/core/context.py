@@ -1,5 +1,6 @@
+from . import get_stdlib
 from .error import UnexpectedOutput, makeExecutionError, ModelError
-from .stdlib import terminal
+
 from collections import OrderedDict
 
 _raise_internal_errors = True
@@ -46,7 +47,7 @@ class Context(dict):
     def result_used(self, node):
         # FIXME: this doesn't remove all of the unused
         # may need to fix this in 'compile' or 'optimize'.
-        if node.primitive == terminal.apl:
+        if node.primitive == get_stdlib().terminal.apl:
             return True
 
         for argname, var in node.varout.items():
@@ -73,7 +74,7 @@ class Context(dict):
             if self.result_used(node):
                 self.execute(node, tape)
 
-            if node.primitive == terminal.apl:
+            if node.primitive == get_stdlib().terminal.apl:
                 for argname, var in node.varout.items():
                     r[var._name] = self[var._name]
 

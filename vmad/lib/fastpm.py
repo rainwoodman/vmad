@@ -1,6 +1,9 @@
 from vmad import operator, autooperator
-from pmesh.pm import ParticleMesh
+from vmad.core.stdlib import watchpoint
 from vmad.lib import linalg
+
+from fastpm.background import MatterDominated
+from pmesh.pm import ParticleMesh
 import numpy
 
 @operator
@@ -405,7 +408,6 @@ def lpt(rhok, q, pm):
 
 @autooperator('dx->f,potk')
 def gravity(dx, q, pm):
-    from vmad.core.stdlib import watchpoint
     x = q + dx
     #def w(q): print('q', q)
     #watchpoint(x, w)
@@ -494,7 +496,6 @@ def firststep(rhok, q, a, pt, pm):
 
 @autooperator('rhok->dx,p,f')
 def nbody(rhok, q, stages, cosmology, pm):
-    from fastpm.background import MatterDominated
 
     stages = numpy.array(stages)
     mid = (stages[1:] * stages[:-1]) ** 0.5
@@ -527,8 +528,6 @@ class cdot:
 
 class FastPMSimulation:
     def __init__(self, stages, cosmology, pm, B=1, q=None):
-        from fastpm.background import MatterDominated
-
         if q is None:
             q = pm.generate_uniform_particle_grid()
 

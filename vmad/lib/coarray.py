@@ -1,4 +1,5 @@
 from vmad import operator
+
 import numpy
 
 @operator

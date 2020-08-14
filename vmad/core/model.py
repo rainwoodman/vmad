@@ -1,8 +1,8 @@
-from .error import DuplicatedOutput, InferError
+from . import get_stdlib
 from .context import Context
-from .tape import Tape
+from .error import DuplicatedOutput, InferError
 from .symbol import Symbol
-from .stdlib import terminal
+from .tape import Tape
 
 from collections import OrderedDict
 import uuid
@@ -73,10 +73,27 @@ class Model(list):
 
         return v
 
+    @staticmethod
+    def anchored(symbol):
+        return symbol._model_ref is not None
+
+    @staticmethod
+    def transient(symbol):
+        return isinstance(symbol._model_ref, ModelInTransient)
+
+    @staticmethod
+    def get_model(symbol):
+        if symbol._model_ref is None:
+            return None
+        if isinstance(symbol._model_ref, ModelInTransient):
+            return symbol._model_ref
+        else:
+            return symbol._model_ref()
+
     def anchor(self, symbol):
-        if symbol._anchored:
-            if not symbol._transient:
-                if symbol._model is not self:
+        if Model.anchored(symbol):
+            if not Model.transient(symbol):
+                if Model.get_model(symbol) is not self:
                     raise ModelError("cannot change the model after the symbol is no longer in transient.")
 
         if isinstance(self, ModelInTransient):
@@ -96,7 +113,7 @@ class Model(list):
                     raise DuplicatedOutput("Variable %s is already marked as an output" % varname)
 
             var = Symbol(varname, model=self)
-            terminal.apl.create_node(dict(x=oldvar), dict(y=var))
+            get_stdlib().terminal.apl.create_node(dict(x=oldvar), dict(y=var))
             self._vout.append(var)
 
     def compile(self): pass

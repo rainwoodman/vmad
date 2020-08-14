@@ -1,8 +1,8 @@
 from vmad import Builder, autooperator
 from vmad.lib import mpi, linalg
 
-from pmesh.pm import ParticleMesh
 import numpy
+from pmesh.pm import ParticleMesh
 
 @autooperator
 class MPIChiSquareOperator:

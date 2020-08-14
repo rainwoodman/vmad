@@ -1,9 +1,8 @@
-from __future__ import print_function
-
-from vmad.core.model import Builder
-from vmad.core.error import BadArgument
 from vmad.core.autooperator import autooperator
+from vmad.core.error import BadArgument
+from vmad.core.model import Builder
 from vmad.lib.linalg import add
+
 import pytest
 
 @autooperator

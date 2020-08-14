@@ -1,9 +1,8 @@
-from __future__ import print_function
+from vmad.core.model import Builder
+from vmad.lib import linalg
 
 from pprint import pprint
-from vmad.core.model import Builder
 import pytest
-from vmad.lib import linalg
 
 def test_operator_watchpoint():
     from vmad.core.stdlib import watchpoint

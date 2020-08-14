@@ -1,11 +1,10 @@
-from __future__ import print_function
-from pprint import pprint
-from vmad.lib import linalg
-from vmad.core import stdlib
-import numpy
-
 from vmad import Builder
+from vmad.core import stdlib
+from vmad.lib import linalg
 from vmad.testing import BaseVectorTest
+
+import numpy
+from pprint import pprint
 
 class Test_pack_complex(BaseVectorTest):
     x = numpy.arange(10) # will pack to complex of x + x * 1j

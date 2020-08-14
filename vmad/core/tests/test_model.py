@@ -1,8 +1,9 @@
-from __future__ import print_function
-from pprint import pprint
-from vmad.lib.linalg import mul
-from vmad.lib.linalg import add
 from vmad.core.model import Builder
+from vmad.core.model import Model
+from vmad.lib.linalg import add
+from vmad.lib.linalg import mul
+
+from pprint import pprint
 import pytest
 
 def test_model_build():
@@ -13,14 +14,14 @@ def test_model_build():
     def upsample2(Sl, Ql):  #pm has the same resolution as Ql
 
         layout = add(Ql, 1)
-        print(id(layout._model), len(layout._model))
+        print(id(Model.get_model(layout)), len(Model.get_model(layout)))
         Ql1 = add(Ql, layout)
-        print(id(layout._model), id(Ql1._model), len(layout._model))
+        print(id(Model.get_model(layout)), id(Model.get_model(Ql1)), len(Model.get_model(layout)))
         Sl1 = add(Sl, layout)
-        print(id(layout._model), id(Ql1._model), len(layout._model))
+        print(id(Model.get_model(layout)), id(Model.get_model(Ql1)), len(Model.get_model(layout)))
 
         dis_d = add(Ql1, Sl1)
-        print(id(layout._model), id(Ql1._model), len(layout._model))
+        print(id(Model.get_model(layout)), id(Model.get_model(Ql1)), len(Model.get_model(layout)))
 
         return dis_d
 

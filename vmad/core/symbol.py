@@ -1,7 +1,7 @@
+from . import get_stdlib
 from .error import ResolveError
-import weakref
 
-from . import stdlib
+import weakref
 
 class BaseSymbol(object):
     """ A symbol for building models.
@@ -41,7 +41,7 @@ class BaseSymbol(object):
 
     def eval(self, function):
         """ Evaluates an expression or a function on the symbol. see vmad.core.stdlib.eval. """
-        return stdlib.eval(self, function)
+        return get_stdlib().eval(self, function)
 
     # workaround numpy's operator overrides, which
     # is higher priority than rxxx methodds (radd) defined here.
@@ -49,30 +49,30 @@ class BaseSymbol(object):
     # __array_ufunc__ to dispatch this in the future.
     __array_priority__ = 15.0
 
-    def __add__(self, other): return stdlib.add(self, other, __stacklevel__=-3)
-    def __radd__(self, other): return stdlib.add(other, self, __stacklevel__=-3)
-    def __sub__(self, other): return stdlib.sub(self, other, __stacklevel__=-3)
-    def __rsub__(self, other): return stdlib.sub(other, self, __stacklevel__=-3)
-    def __mul__(self, other): return stdlib.mul(self, other, __stacklevel__=-3)
-    def __rmul__(self, other): return stdlib.mul(other, self, __stacklevel__=-3)
-    def __mod__(self, other): return stdlib.mod(self, other, __stacklevel__=-3)
-    def __rmod__(self, other): return stdlib.mod(other, self, __stacklevel__=-3)
-    def __truediv__(self, other): return stdlib.div(self, other, __stacklevel__=-3)
-    def __rtruediv__(self, other): return stdlib.div(other, self, __stacklevel__=-3)
+    def __add__(self, other): return get_stdlib().add(self, other, __stacklevel__=-3)
+    def __radd__(self, other): return get_stdlib().add(other, self, __stacklevel__=-3)
+    def __sub__(self, other): return get_stdlib().sub(self, other, __stacklevel__=-3)
+    def __rsub__(self, other): return get_stdlib().sub(other, self, __stacklevel__=-3)
+    def __mul__(self, other): return get_stdlib().mul(self, other, __stacklevel__=-3)
+    def __rmul__(self, other): return get_stdlib().mul(other, self, __stacklevel__=-3)
+    def __mod__(self, other): return get_stdlib().mod(self, other, __stacklevel__=-3)
+    def __rmod__(self, other): return get_stdlib().mod(other, self, __stacklevel__=-3)
+    def __truediv__(self, other): return get_stdlib().div(self, other, __stacklevel__=-3)
+    def __rtruediv__(self, other): return get_stdlib().div(other, self, __stacklevel__=-3)
     def __pow__(self, other, modulo=None):
         if modulo is not None:
             raise ValueError("pow with modulo is not supported")
-        return stdlib.pow(self, other, __stacklevel__=-3)
+        return get_stdlib().pow(self, other, __stacklevel__=-3)
     def __rpow__(self, other):
         raise
-        return stdlib.pow(other, self, __stacklevel__=-3)
+        return get_stdlib().pow(other, self, __stacklevel__=-3)
 
     def __floordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
     def __rfloordiv__(self, other): raise TypeError("floor div is not supported in autodiff")
 
-    def __neg__(self): return stdlib.neg(self, __stacklevel__=-3)
-    def __pos__(self): return stdlib.pos(self, __stacklevel__=-3)
-    def __abs__(self): return stdlib.abs(self, __stacklevel__=-3)
+    def __neg__(self): return get_stdlib().neg(self, __stacklevel__=-3)
+    def __pos__(self): return get_stdlib().pos(self, __stacklevel__=-3)
+    def __abs__(self): return get_stdlib().abs(self, __stacklevel__=-3)
 
 class Ref(object):
     """
@@ -91,7 +91,6 @@ class Ref(object):
         """ Returns a list of symbol names that are referenced by
             this object, recursively
         """
-        from .symbol import Symbol
         l = set([])
         symbol = self.symbol
         # recusrively get the name of the parents
@@ -121,25 +120,6 @@ class Symbol(BaseSymbol):
         if model is not None:
             # anchor it now
             model.anchor(self)
-
-    @property
-    def _model(self):
-        from .model import ModelInTransient
-        if self._model_ref is None:
-            return None
-        if isinstance(self._model_ref, ModelInTransient):
-            return self._model_ref
-        else:
-            return self._model_ref()
-
-    @property
-    def _anchored(self):
-        return self._model_ref is not None
-
-    @property
-    def _transient(self):
-        from .model import ModelInTransient
-        return isinstance(self._model_ref, ModelInTransient)
 
     def __repr__(self):
         return self._name

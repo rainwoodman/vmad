@@ -1,4 +1,4 @@
-from . import autodiff
+from . import get_autodiff
 
 class Record(object):
     """ A record on the tape. 
@@ -43,11 +43,11 @@ class Tape(list):
 
     def get_vjp(self):
         assert self._completed
-        return autodiff.vjpmodel(self)
+        return get_autodiff().vjpmodel(self)
 
     def get_jvp(self):
         assert self._completed
-        return autodiff.jvpmodel(self)
+        return get_autodiff().jvpmodel(self)
 
     def compute_jvjp(self, vout, aout, init):
         jvp = self.get_jvp()

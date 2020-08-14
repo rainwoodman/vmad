@@ -6,6 +6,8 @@
 
 from vmad.core.operator import operator, ZeroGradient
 
+from builtins import eval as eval_
+
 @operator
 class eval:
     ain  = 'x'
@@ -24,8 +26,7 @@ class eval:
         if hasattr(function, '__call__'):
             return dict(y=function(x))
         else:
-            from builtins import eval
-            return dict(y=eval(function, dict(x=x)))
+            return dict(y=eval_(function, dict(x=x)))
 
     def vjp(node): return ZeroGradient
     def jvp(node): return ZeroGradient

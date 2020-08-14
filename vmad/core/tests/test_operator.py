@@ -1,8 +1,7 @@
-from __future__ import print_function
+from vmad.core.model import Builder
+from vmad.core.operator import operator, ZeroGradient
 
 from pprint import pprint
-from vmad.core.operator import operator, ZeroGradient
-from vmad.core.model import Builder
 import pytest
 
 @operator

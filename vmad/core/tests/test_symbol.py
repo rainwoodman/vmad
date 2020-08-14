@@ -1,6 +1,6 @@
-from vmad.core.symbol import Symbol
-from vmad.core.operator import operator
 from vmad import Builder
+from vmad.core.operator import operator
+from vmad.core.symbol import Symbol
 
 def test_symbol_eval():
     with Builder() as m:

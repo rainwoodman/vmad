@@ -1,7 +1,8 @@
 from vmad import Builder
-from numpy.testing import assert_array_equal, assert_allclose
 
 import numpy
+from numpy.testing import assert_array_equal, assert_allclose
+
 
 class BaseScalarTest:
     """ Basic correctness of gradient against numerical with to_scalar """

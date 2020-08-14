@@ -10,7 +10,9 @@ collective : an operation that is performed by all ranks.
 
 """
 
-from vmad import operator, autooperator
+from vmad import autooperator
+from vmad import operator
+
 import numpy
 
 @operator
