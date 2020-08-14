@@ -56,8 +56,8 @@ class einsum:
         for i, arg in enumerate(x):
             # Jacobian is removing the item from the chain. 
             # vjp is replace the item with _y.
-            a = list(sub_op)[:]
-            x1 = list(x)[:]
+            a = [xx for xx in sub_op]
+            x1 = [numpy.copy(xx) for xx in x]
             new_sub_y = a[i]
             a[i] = sub_y
             x1[i] = _y
@@ -70,8 +70,8 @@ class einsum:
         for i, arg in enumerate(x):
             # Jacobian is removing the item from the chain. 
             # jvp is replace the item with x_
-            x1 = list(x)[:]
-            x1[i] = x_[i]
+            x1 = [numpy.copy(xx) for xx in x]
+            x1[i][:] = x_[i]
             y_.append(numpy.einsum(_join_einsum_sub(sub_op, sub_y), *x1))
 
         # sum of all branches
