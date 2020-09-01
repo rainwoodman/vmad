@@ -2,6 +2,7 @@ from . import get_autodiff
 import numpy
 import resource
 import os
+from pathlib import Path
 
 class Record(object):
     """ A record on the tape. 
@@ -21,7 +22,7 @@ class Tape(list):
         self.model = model
         self.init = init
         self._completed  = False
-        self._prev_usage = numpy.asarray([0., 0., 0.])
+        self._prev_usage = self.get_current_mem_usage()
         self._num_call = 0
 
     def finalize(self, out):
@@ -65,7 +66,7 @@ class Tape(list):
         return p
 
     def dump_mem_usage(self, name):
-        tags  = ['ixrss', 'idrss', 'isrss']
+        tags  = ['rss','srss']
         usage = self.get_current_mem_usage()
         usage = usage - self._prev_usage
         
@@ -80,7 +81,9 @@ class Tape(list):
         self._prev_usage = usage
 
     def get_current_mem_usage(self):
-        usage = resource.getrusage(resource.RUSAGE_SELF)
-        return usage[3:6]
-        
+        PATH   = Path('/proc/self/statm')
+        PAGESIZE = resource.getpagesize()
+        statm  = PATH.read_text()
+        fields = statm.split()
+        return numpy.asarray([(int(fields[1])*PAGESIZE)/1e6, (int(fields[2])*PAGESIZE)/1e6])
 
