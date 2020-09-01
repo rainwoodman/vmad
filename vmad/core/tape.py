@@ -1,4 +1,7 @@
 from . import get_autodiff
+import numpy
+import resource
+import os
 
 class Record(object):
     """ A record on the tape. 
@@ -17,7 +20,9 @@ class Tape(list):
     def __init__(self, model, init):
         self.model = model
         self.init = init
-        self._completed = False
+        self._completed  = False
+        self._prev_usage = numpy.asarray([0., 0., 0.])
+        self._num_call = 0
 
     def finalize(self, out):
         """ Finalize the tape, with a set of computed outputs.
@@ -32,8 +37,10 @@ class Tape(list):
 
     def append(self, node, impl_kwargs):
         assert not self._completed
-
+        
         list.append(self, Record(node, impl_kwargs))
+        self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
+        self._num_call+=1
 
     def get_vjp_vout(self):
         return ['_' + varname for varname in self.init.keys()]
@@ -56,4 +63,24 @@ class Tape(list):
         vjp = self.get_vjp()
         p = vjp.compute(vout, init=dict([('_' + a, t1) for a, t1 in zip(aout, t)]))
         return p
+
+    def dump_mem_usage(self, name):
+        tags  = ['ixrss', 'idrss', 'isrss']
+        usage = self.get_current_mem_usage()
+        usage = usage - self._prev_usage
+        
+        sep = " "
+        string = sep.join([str(self._num_call),name])
+        for tag, u in zip(tags, usage):
+            string= sep.join([string, tag, str(u)])
+        string= string+"\n"
+        f = open(os.path.join(os.getcwd(),"mem.log"), "a")
+        f.write(string)
+        f.close()
+        self._prev_usage = usage
+
+    def get_current_mem_usage(self):
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+        return usage[3:6]
+        
 
