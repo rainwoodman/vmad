@@ -38,7 +38,6 @@ class Tape(list):
 
     def append(self, node, impl_kwargs):
         assert not self._completed
-        
         list.append(self, Record(node, impl_kwargs))
         self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
         self._num_call+=1
@@ -69,7 +68,7 @@ class Tape(list):
         tags  = ['rss','srss']
         usage = self.get_current_mem_usage()
         usage = usage - self._prev_usage
-        
+        self._prev_usage = usage 
         sep = " "
         string = sep.join([str(self._num_call),name])
         for tag, u in zip(tags, usage):
@@ -78,12 +77,11 @@ class Tape(list):
         f = open(os.path.join(os.getcwd(),"mem.log"), "a")
         f.write(string)
         f.close()
-        self._prev_usage = usage
 
     def get_current_mem_usage(self):
         PATH   = Path('/proc/self/statm')
         PAGESIZE = resource.getpagesize()
         statm  = PATH.read_text()
         fields = statm.split()
-        return numpy.asarray([(int(fields[1])*PAGESIZE)/1e6, (int(fields[2])*PAGESIZE)/1e6])
+        return numpy.asarray([(float(fields[1])*PAGESIZE)/1e6, (float(fields[2])*PAGESIZE)/1e6])
 
