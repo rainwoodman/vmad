@@ -66,17 +66,16 @@ class Tape(list):
 
     def dump_mem_usage(self, name):
         tags  = ['rss','srss']
-        usage = self.get_current_mem_usage()
-        incs  = usage - self._prev_usage
-        self._prev_usage = usage 
+        usage = self.get_current_mem_usage() 
         sep = " "
         string = sep.join([str(self._num_call),name])
-        for tag, u in zip(tags, incs):
-            string= sep.join([string, tag, str(u)])
+        for ii in range(len(tags)):
+            string = sep.join([string, tags[ii]+'_inc', str(usage[ii]-self._prev_usage[ii]),tags[ii], str(usage[ii])])
         string= string+"\n"
         f = open(os.path.join(os.getcwd(),"mem.log"), "a")
         f.write(string)
         f.close()
+        self._prev_usage=usage
 
     def get_current_mem_usage(self):
         PATH   = Path('/proc/self/statm')
