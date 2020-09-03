@@ -67,11 +67,11 @@ class Tape(list):
     def dump_mem_usage(self, name):
         tags  = ['rss','srss']
         usage = self.get_current_mem_usage()
-        usage = usage - self._prev_usage
+        incs  = usage - self._prev_usage
         self._prev_usage = usage 
         sep = " "
         string = sep.join([str(self._num_call),name])
-        for tag, u in zip(tags, usage):
+        for tag, u in zip(tags, incs):
             string= sep.join([string, tag, str(u)])
         string= string+"\n"
         f = open(os.path.join(os.getcwd(),"mem.log"), "a")
