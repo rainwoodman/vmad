@@ -18,12 +18,17 @@ class Record(object):
         return '%s / %s' % (self.node, self.impl_kwargs)
 
 class Tape(list):
+
+    mem_var = [0.]
+
     def __init__(self, model, init):
         self.model = model
         self.init = init
         self._completed  = False
         self._prev_usage = self.get_current_mem_usage()
+        self.mem_var[0]  = self._prev_usage[0]
         self._num_call = 0
+
 
     def finalize(self, out):
         """ Finalize the tape, with a set of computed outputs.
@@ -68,7 +73,7 @@ class Tape(list):
         tags  = ['rss','srss']
         usage = self.get_current_mem_usage() 
         sep = " "
-        string = sep.join([str(self._num_call),name])
+        string = sep.join([str(self._num_call),name,'rss_inc_corr',str(usage[0]-self.mem_var[0])])
         for ii in range(len(tags)):
             string = sep.join([string, tags[ii]+'_inc', str(usage[ii]-self._prev_usage[ii]),tags[ii], str(usage[ii])])
         string= string+"\n"
@@ -76,6 +81,8 @@ class Tape(list):
         f.write(string)
         f.close()
         self._prev_usage=usage
+        self.mem_var[0] =usage[0]
+
 
     def get_current_mem_usage(self):
         PATH   = Path('/proc/self/statm')
