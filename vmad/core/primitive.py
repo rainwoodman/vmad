@@ -3,6 +3,7 @@ from .model import Model
 from .node import Node
 from .symbol import assymbol
 from .symbol import List
+from .symbol import ListPlaceholder
 from .symbol import Literal
 from .symbol import Symbol
 
@@ -119,7 +120,11 @@ class Primitive:
                 varname = basename + '-' + argname
                 var = Symbol(varname, model=model)
             else:
-                var = assymbol(kwout[argname])
+                if isinstance(kwout[argname], ListPlaceholder):
+                    varname = basename + '-' + argname
+                    var = kwout[argname].as_list(default_varname=varname)
+                else:
+                    var = assymbol(kwout[argname])
 
                 # already given a symbol, overwrite it
                 # but this doesn't work for gradients / tape
@@ -158,8 +163,9 @@ class Primitive:
         for argname in list(kwargs.keys()):
             if argname in self.outnames:
                 if argname not in self.argnames:
-                    import warnings
-                    warnings.warn("Supplying keyword argument to an operator for an output. Prefer to use the verbose .create_node API instead of this", DeprecationWarning, stacklevel=3)
+                    if not isinstance(kwargs[argname], ListPlaceholder):
+                        import warnings
+                        warnings.warn("Supplying non-placeholder keyword argument to an operator for an output. Prefer to use the verbose .create_node API instead of this", DeprecationWarning, stacklevel=3)
                     kwout[argname] = kwargs.pop(argname)
 
             elif argname not in self.argnames:

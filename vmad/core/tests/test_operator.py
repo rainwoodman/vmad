@@ -235,22 +235,17 @@ def test_operator_list_with_zero_vjp():
 
 def test_operator_list_out():
     from numpy.testing import assert_array_equal
-    from vmad.core.symbol import List, Symbol
+    from vmad.core.symbol import ListPlaceholder
+    from vmad.core.symbol import List
 
     with Builder() as m:
         a = m.input('a')
 
-        # it is very awkward to prepare a list output
-        # I doubt this will be of any usefulness
-        b1 = Symbol('b1')
-        b2 = Symbol('b2')
-        l = List([b1, b2])
-
-        t = split(x=a, axis=0, args=l)
+        t = split(x=a, axis=0, args=ListPlaceholder(2))
         assert isinstance(t, List)
-        assert next(iter(t)) is b1
+        assert len(t) == 2
 
-        m.output(c=l)
+        m.output(c=t)
 
     init = dict(a=[[1, 1], [2, 2]])
 
