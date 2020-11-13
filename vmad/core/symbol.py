@@ -302,3 +302,25 @@ def assymbol(obj):
         obj = Literal(obj)
 
     return obj
+
+
+class ListPlaceholder:
+    def __init__(self, size, varname=None):
+        """ Placeholder used to mark the shape of output variables.
+
+        size is the shape of the List. varname, if given will replace the
+        default name.
+
+        Use as a named argument for the output argument of an operator.
+        """
+        self.size = size
+        self.varname = varname
+
+    def as_list(self, default_varname):
+        if self.varname is None:
+            varname = default_varname
+        else:
+            varname = self.varname
+        return List(
+            [Symbol("%s-%d" % (varname, i)) for i in range(self.size)])
+
