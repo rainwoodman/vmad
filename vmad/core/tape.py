@@ -44,9 +44,8 @@ class Tape(list):
     def append(self, node, impl_kwargs):
         assert not self._completed
         list.append(self, Record(node, impl_kwargs))
-        if rank==0:
-            self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
-            self._num_call+=1
+        self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
+        self._num_call+=1
 
     def get_vjp_vout(self):
         return ['_' + varname for varname in self.init.keys()]
