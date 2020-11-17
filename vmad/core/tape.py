@@ -23,11 +23,11 @@ class Tape(list):
 
     def __init__(self, model, init):
         self.model = model
-        self.init = init
+        self.init  = init
         self._completed  = False
         self._prev_usage = self.get_current_mem_usage()
         self.mem_var[0]  = self._prev_usage[0]
-        self._num_call = 0
+        self._num_call   = 0
 
 
     def finalize(self, out):
@@ -44,8 +44,9 @@ class Tape(list):
     def append(self, node, impl_kwargs):
         assert not self._completed
         list.append(self, Record(node, impl_kwargs))
-        self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
-        self._num_call+=1
+        if rank==0:
+            self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
+            self._num_call+=1
 
     def get_vjp_vout(self):
         return ['_' + varname for varname in self.init.keys()]
@@ -71,8 +72,9 @@ class Tape(list):
 
     def dump_mem_usage(self, name):
         tags  = ['rss','srss']
-        usage = self.get_current_mem_usage() 
-        sep = " "
+        usage = self.get_current_mem_usage()
+        sep   = " "
+        print(usage[0]-self.mem_var[0])
         string = sep.join([str(self._num_call),name,'rss_inc_corr',str(usage[0]-self.mem_var[0])])
         for ii in range(len(tags)):
             string = sep.join([string, tags[ii]+'_inc', str(usage[ii]-self._prev_usage[ii]),tags[ii], str(usage[ii])])
