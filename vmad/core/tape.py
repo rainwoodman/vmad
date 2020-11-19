@@ -73,7 +73,6 @@ class Tape(list):
         tags  = ['rss','srss']
         usage = self.get_current_mem_usage()
         sep   = " "
-        print(usage[0]-self.mem_var[0])
         string = sep.join([str(self._num_call),name,'rss_inc_corr',str(usage[0]-self.mem_var[0])])
         for ii in range(len(tags)):
             string = sep.join([string, tags[ii]+'_inc', str(usage[ii]-self._prev_usage[ii]),tags[ii], str(usage[ii])])
