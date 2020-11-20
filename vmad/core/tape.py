@@ -3,10 +3,11 @@ import numpy
 import resource
 import os
 from pathlib import Path
+import psutil
+
 
 class Record(object):
     """ A record on the tape. 
-
         A record contains the node and the resolved arg symbols to the node.
 
     """
@@ -19,16 +20,17 @@ class Record(object):
 
 class Tape(list):
 
-    mem_var = [0.]
+    tape_num = 0
+    rss      = [0]
 
     def __init__(self, model, init):
-        self.model = model
-        self.init  = init
+        self.model       = model
+        self.init        = init
         self._completed  = False
-        self._prev_usage = self.get_current_mem_usage()
-        self.mem_var[0]  = self._prev_usage[0]
-        self._num_call   = 0
-
+        self.num         = Tape.tape_num
+        if self.num==0:
+            Tape.rss[0]=self.get_current_mem_usage()
+        Tape.tape_num+=1 
 
     def finalize(self, out):
         """ Finalize the tape, with a set of computed outputs.
@@ -40,12 +42,13 @@ class Tape(list):
         assert isinstance(out, dict)
         self.out = out.copy()
         self._completed = True
+        if self.num==0:
+            self.dump_mem_usage()
 
     def append(self, node, impl_kwargs):
         assert not self._completed
         list.append(self, Record(node, impl_kwargs))
-        self.dump_mem_usage(node.name+" "+str(node._frameinfo[1::]))
-        self._num_call+=1
+        Tape.rss.append(self.get_current_mem_usage())        
 
     def get_vjp_vout(self):
         return ['_' + varname for varname in self.init.keys()]
@@ -69,25 +72,11 @@ class Tape(list):
         p = vjp.compute(vout, init=dict([('_' + a, t1) for a, t1 in zip(aout, t)]))
         return p
 
-    def dump_mem_usage(self, name):
-        tags  = ['rss','srss']
-        usage = self.get_current_mem_usage()
-        sep   = " "
-        string = sep.join([str(self._num_call),name,'rss_inc_corr',str(usage[0]-self.mem_var[0])])
-        for ii in range(len(tags)):
-            string = sep.join([string, tags[ii]+'_inc', str(usage[ii]-self._prev_usage[ii]),tags[ii], str(usage[ii])])
-        string= string+"\n"
-        f = open(os.path.join(os.getcwd(),"mem.log"), "a")
-        f.write(string)
-        f.close()
-        self._prev_usage=usage
-        self.mem_var[0] =usage[0]
-
+    def dump_mem_usage(self):
+        numpy.save(os.path.join(os.getcwd(),"mem_profiles/mem_%d.npy"%self.num),Tape.rss)
 
     def get_current_mem_usage(self):
-        PATH   = Path('/proc/self/statm')
-        PAGESIZE = resource.getpagesize()
-        statm  = PATH.read_text()
-        fields = statm.split()
-        return numpy.asarray([(float(fields[1])*PAGESIZE)/1e6, (float(fields[2])*PAGESIZE)/1e6])
+        process = psutil.Process(os.getpid())
+        rss     = process.memory_info().rss
+        return rss/1e6
 
