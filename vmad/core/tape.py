@@ -22,6 +22,7 @@ class Tape(list):
 
     tape_num = 0
     rss      = [0]
+    num_finalized = 0
 
     def __init__(self, model, init):
         self.model       = model
@@ -42,7 +43,8 @@ class Tape(list):
         assert isinstance(out, dict)
         self.out = out.copy()
         self._completed = True
-        if self.num==0:
+        Tape.num_finalized+=1
+        if Tape.num_finalized==Tape.tape_num:
             self.dump_mem_usage()
 
     def append(self, node, impl_kwargs):
