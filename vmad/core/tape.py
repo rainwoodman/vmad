@@ -23,6 +23,8 @@ class Tape(list):
     tape_num = 0
     rss      = [0]
     num_finalized = 0
+    active_tapes = 0
+    dumps = 0
 
     def __init__(self, model, init):
         self.model       = model
@@ -31,7 +33,8 @@ class Tape(list):
         self.num         = Tape.tape_num
         if self.num==0:
             Tape.rss[0]=self.get_current_mem_usage()
-        Tape.tape_num+=1 
+        Tape.tape_num+=1
+        Tape.active_tapes+=1 
 
     def finalize(self, out):
         """ Finalize the tape, with a set of computed outputs.
@@ -44,8 +47,10 @@ class Tape(list):
         self.out = out.copy()
         self._completed = True
         Tape.num_finalized+=1
-        if Tape.num_finalized==Tape.tape_num:
-            self.dump_mem_usage()
+        Tape.active_tapes-=1
+        if Tape.active_tapes==0:
+            self.dump_mem_usage(Tape.dumps)
+            Tape.dumps+=1
 
     def append(self, node, impl_kwargs):
         assert not self._completed
@@ -74,8 +79,8 @@ class Tape(list):
         p = vjp.compute(vout, init=dict([('_' + a, t1) for a, t1 in zip(aout, t)]))
         return p
 
-    def dump_mem_usage(self):
-        numpy.save(os.path.join(os.getcwd(),"mem_profiles/mem_%d.npy"%self.num),Tape.rss)
+    def dump_mem_usage(self,dumps):
+        numpy.save(os.path.join(os.getcwd(),"mem_profiles/mem_%d_%d.npy"%(self.num,dumps)),Tape.rss)
 
     def get_current_mem_usage(self):
         process = psutil.Process(os.getpid())
