@@ -132,16 +132,23 @@ class pow(binary):
         else:
             # no need for logx2, as _x2 will be zeros.
             logx1 = 0
-
         return dict(y=x1 ** x2, logx1=logx1)
 
     def vjp(node, _y, x1, x2, logx1):
-        fac = x1 ** (x2 - 1) #if x2 != 1 else 1
+        import numpy as np
+        x2 = np.array(x2, dtype='f8')
+        with np.errstate(divide='ignore'):
+            fac = x1 ** (x2 - 1) 
+        fac[np.isinf(fac)] = 0
         return dict(_x1 = x2 * _y * fac,
                     _x2 = _y * x1**x2 * logx1)
 
     def jvp(node, x1_, x2_, x1, x2, logx1):
-        fac = x1 ** (x2 - 1) #if x2 != 1 else 1
+        import numpy as np
+        x2 = np.array(x2, dtype='f8')
+        with np.errstate(divide='ignore'):
+            fac = x1 ** (x2 - 1) 
+        fac[np.isinf(fac)] = 0
         return dict(y_ = x2 * x1_ * fac + x2_ * x1**x2 * logx1)
 
 

@@ -121,6 +121,14 @@ class Test_pow(BaseVectorTest):
     def model(self, x):
         return linalg.pow(x, 2.0)
 
+class Test_pow2(BaseVectorTest):
+    x = numpy.arange(10)
+    x2 = numpy.arange(10)
+    y = x ** x2
+
+    def model(self, x):
+        return linalg.pow(x,self.x2)
+
 class Test_abs(BaseVectorTest):
     x = numpy.arange(10) - 4.5 # avoid 0 because numerial is bad.
     y = (abs(x) + x)
